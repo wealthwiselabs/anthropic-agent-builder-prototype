@@ -280,6 +280,103 @@ export function matchEntry(prompt: string): ChatEntry | null {
   return bestScore > 0 ? best : null;
 }
 
-// Fallback canned reply when nothing matches.
-export const FALLBACK_REPLY = (input: string) =>
-  `I don't have a scripted handler for "${input.slice(0, 60)}", but I can add a Guardrails node here as a safe default — click below to apply.`;
+// ---- Generic fallbacks ----
+//
+// Any unmatched user message still produces a graph mutation. We rotate
+// through three plausible edit kinds so it feels like an AI is interpreting
+// the request: prompt edit, new node, new logic branch.
+
+const editLeadAgentPrompt = (userText: string): Mutation => (graph) => {
+  const lead = graph.nodes.find((n) => n.type === 'agent');
+  if (!lead) return null;
+  const data = lead.data as AgentNodeData;
+  const note = `\n\n# Note (added by copilot): ${userText.slice(0, 200)}`;
+  if (data.prompt.includes(note.trim())) {
+    return { graph, eventLabel: 'Prompt already updated for this request' };
+  }
+  return {
+    graph: {
+      ...graph,
+      nodes: graph.nodes.map((n) =>
+        n.id === lead.id
+          ? { ...n, data: { ...data, prompt: data.prompt + note } as AgentNodeData }
+          : n
+      ),
+    },
+    eventLabel: `Updated ${data.label}'s prompt`,
+  };
+};
+
+const addNoteCapturing = (userText: string): Mutation => (graph) => {
+  const noteId = id('note');
+  const lead = graph.nodes.find((n) => n.type === 'agent');
+  const pos = lead
+    ? { x: lead.position.x + 240, y: lead.position.y + 220 }
+    : { x: 240, y: 240 };
+  return {
+    graph: {
+      ...graph,
+      nodes: [
+        ...graph.nodes,
+        {
+          id: noteId,
+          type: 'note',
+          position: pos,
+          data: { kind: 'note', label: 'Copilot note', body: userText.slice(0, 240) },
+        },
+      ],
+    },
+    eventLabel: 'Added a Note capturing your request',
+  };
+};
+
+const addBranchAfterAgent = (userText: string): Mutation => (graph) => {
+  const agent = graph.nodes.find((n) => n.type === 'agent');
+  if (!agent) return null;
+  const ifId = id('ifelse');
+  const branchLabel =
+    userText.split(/\s+/).slice(0, 3).join(' ').slice(0, 28) || 'new branch';
+  const newIfElse: GraphNode = {
+    id: ifId,
+    type: 'ifelse',
+    position: { x: agent.position.x + 280, y: agent.position.y + 160 },
+    data: {
+      kind: 'ifelse',
+      label: 'New branch',
+      branches: [branchLabel, 'else'],
+    },
+  };
+  return {
+    graph: {
+      nodes: [...graph.nodes, newIfElse],
+      edges: [...graph.edges, { id: id('e'), source: agent.id, target: ifId }],
+    },
+    eventLabel: `Added an If/else branch for "${branchLabel}"`,
+  };
+};
+
+// Cycle through the three generic edits per session so consecutive
+// unmatched messages don't all do the same thing.
+let fallbackCounter = 0;
+export function fallbackEntry(userText: string): ChatEntry {
+  const which = fallbackCounter++ % 3;
+  if (which === 0) {
+    return {
+      keywords: [],
+      reply: `Got it — I tweaked the lead agent's system prompt to address that.`,
+      mutation: editLeadAgentPrompt(userText),
+    };
+  }
+  if (which === 1) {
+    return {
+      keywords: [],
+      reply: `Noted. I dropped a Note node next to the agent capturing what you said.`,
+      mutation: addNoteCapturing(userText),
+    };
+  }
+  return {
+    keywords: [],
+    reply: `Interesting. I added an If/else after the agent so you can branch on that condition.`,
+    mutation: addBranchAfterAgent(userText),
+  };
+}

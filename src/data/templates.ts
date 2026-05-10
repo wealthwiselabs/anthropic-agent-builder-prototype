@@ -83,8 +83,7 @@ const TRAVEL: Graph = {
     { id: 'e5', source: 'sub-flight', target: 'ifelse' },
     { id: 'e6', source: 'sub-hotel', target: 'ifelse' },
     { id: 'e7', source: 'sub-itinerary', target: 'ifelse' },
-    { id: 'e8', source: 'ifelse', target: 'end', label: 'yes' },
-    { id: 'e9', source: 'ifelse', target: 'lead', label: 'no' },
+    { id: 'e8', source: 'ifelse', sourceHandle: 'yes', target: 'end', label: 'yes' },
   ],
 };
 
@@ -166,9 +165,9 @@ const SUPPORT: Graph = {
   ],
   edges: [
     { id: 'e1', source: 'start', target: 'classify' },
-    { id: 'e2', source: 'classify', target: 'agent-refund', label: 'refund' },
-    { id: 'e3', source: 'classify', target: 'agent-tech', label: 'technical' },
-    { id: 'e4', source: 'classify', target: 'agent-general', label: 'general' },
+    { id: 'e2', source: 'classify', sourceHandle: 'refund', target: 'agent-refund', label: 'refund' },
+    { id: 'e3', source: 'classify', sourceHandle: 'technical', target: 'agent-tech', label: 'technical' },
+    { id: 'e4', source: 'classify', sourceHandle: 'general', target: 'agent-general', label: 'general' },
     { id: 'e5', source: 'memory', target: 'agent-refund' },
     { id: 'e6', source: 'fileSearch', target: 'agent-tech' },
     { id: 'e7', source: 'agent-refund', target: 'end' },
@@ -179,63 +178,70 @@ const SUPPORT: Graph = {
 };
 
 const EMAIL: Graph = {
+  // Linear triage pipeline. Start → Triage classifier → branches by email type.
+  // - request    → draft_reply  → User approval → End
+  // - meeting    → schedule_mtg → User approval → End
+  // - info       → summarize_thread             → End
+  // - spam       → End (deleted)
   nodes: [
     {
       id: 'start',
       type: 'start',
-      position: { x: 80, y: 280 },
+      position: { x: 40, y: 280 },
       data: { kind: 'start', label: 'Start' },
     },
     {
-      id: 'agent',
-      type: 'agent',
-      position: { x: 280, y: 280 },
+      id: 'triage',
+      type: 'classify',
+      position: { x: 240, y: 240 },
       data: {
-        kind: 'agent',
-        label: 'Inbox Assistant',
-        prompt: 'Read incoming email; pick a Skill (draft / summarize / schedule) and execute. Wait for human approval before sending.',
-        model: 'claude-sonnet-4-6',
-        tools: ['skills'],
+        kind: 'classify',
+        label: 'Triage email',
+        // Order matches top-to-bottom Skill positions on the right.
+        intents: ['request', 'info-sharing', 'meeting', 'spam'],
       },
     },
     {
       id: 'skill-draft',
       type: 'skill',
-      position: { x: 580, y: 120 },
+      position: { x: 540, y: 60 },
       data: { kind: 'skill', label: 'draft_reply', description: 'Compose a reply matching tone and prior thread context.' },
     },
     {
       id: 'skill-summary',
       type: 'skill',
-      position: { x: 580, y: 280 },
+      position: { x: 540, y: 240 },
       data: { kind: 'skill', label: 'summarize_thread', description: 'Summarize a long thread into action items.' },
     },
     {
       id: 'skill-schedule',
       type: 'skill',
-      position: { x: 580, y: 440 },
+      position: { x: 540, y: 420 },
       data: { kind: 'skill', label: 'schedule_meeting', description: 'Propose times via the calendar tool.' },
     },
     {
       id: 'approval',
       type: 'approval',
-      position: { x: 880, y: 280 },
+      position: { x: 840, y: 230 },
       data: { kind: 'approval', label: 'User approval' },
     },
     {
       id: 'end',
       type: 'end',
-      position: { x: 1120, y: 280 },
+      position: { x: 1100, y: 290 },
       data: { kind: 'end', label: 'End' },
     },
   ],
   edges: [
-    { id: 'e1', source: 'start', target: 'agent' },
-    { id: 'e2', source: 'skill-draft', target: 'agent' },
-    { id: 'e3', source: 'skill-summary', target: 'agent' },
-    { id: 'e4', source: 'skill-schedule', target: 'agent' },
-    { id: 'e5', source: 'agent', target: 'approval' },
-    { id: 'e6', source: 'approval', target: 'end' },
+    { id: 'e-start',    source: 'start',          target: 'triage' },
+    { id: 'e-req',      source: 'triage',         sourceHandle: 'request',      target: 'skill-draft',     label: 'request' },
+    { id: 'e-info',     source: 'triage',         sourceHandle: 'info-sharing', target: 'skill-summary',   label: 'info' },
+    { id: 'e-meet',     source: 'triage',         sourceHandle: 'meeting',      target: 'skill-schedule',  label: 'meeting' },
+    { id: 'e-spam',     source: 'triage',         sourceHandle: 'spam',         target: 'end',             label: 'spam → delete' },
+    { id: 'e-draft',    source: 'skill-draft',    target: 'approval' },
+    { id: 'e-sched',    source: 'skill-schedule', target: 'approval' },
+    { id: 'e-approval', source: 'approval',       target: 'end' },
+    { id: 'e-summary',  source: 'skill-summary',  target: 'end' },
   ],
 };
 

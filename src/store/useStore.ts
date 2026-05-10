@@ -27,9 +27,13 @@ type StoreState = {
   pushChat: (m: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
   clearChat: () => void;
 
-  // View state
+  // View state (graph editor vs read-only code view, only used in build mode)
   view: 'graph' | 'code';
   setView: (v: 'graph' | 'code') => void;
+
+  // Wizard mode: Build → Test → Deploy
+  mode: 'build' | 'test' | 'deploy';
+  setMode: (m: 'build' | 'test' | 'deploy') => void;
 
   // Deploy
   lastDeployTarget: DeployTarget | null;
@@ -83,6 +87,9 @@ export const useStore = create<StoreState>((set) => ({
 
   view: 'graph',
   setView: (v) => set({ view: v }),
+
+  mode: 'build',
+  setMode: (m) => set({ mode: m }),
 
   lastDeployTarget: null,
   setLastDeployTarget: (t) => set({ lastDeployTarget: t }),

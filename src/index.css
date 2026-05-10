@@ -14,6 +14,15 @@
   }
 }
 
+/* Subtle fade-in for incremental content reveal (Test panel thinking lines, replies). */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 240ms ease-out both;
+}
+
 /* React Flow overrides */
 .react-flow__attribution {
   display: none !important;

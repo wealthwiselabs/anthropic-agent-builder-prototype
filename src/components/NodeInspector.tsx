@@ -354,7 +354,7 @@ function ToggleRow({
         type="button"
         onClick={() => onChange(!checked)}
         className={
-          'mt-0.5 inline-flex items-center w-9 h-5 rounded-full transition-colors ' +
+          'relative shrink-0 mt-0.5 w-10 h-5 rounded-full transition-colors ' +
           (checked ? 'bg-coral' : 'bg-border')
         }
         role="switch"
@@ -362,8 +362,8 @@ function ToggleRow({
       >
         <span
           className={
-            'inline-block w-4 h-4 rounded-full bg-white shadow transition-transform ' +
-            (checked ? 'translate-x-4' : 'translate-x-0.5')
+            'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-[left] duration-150 ease-out ' +
+            (checked ? 'left-[22px]' : 'left-0.5')
           }
         />
       </button>

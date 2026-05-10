@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowUp, Sparkles, Wand2 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { TEMPLATES } from '../data/templates';
-import { matchEntry, FALLBACK_REPLY, CHAT_ENTRIES } from '../data/chatScript';
+import { matchEntry, fallbackEntry, CHAT_ENTRIES } from '../data/chatScript';
 import clsx from 'clsx';
 
 export function ChatSidebar() {
@@ -38,25 +38,25 @@ export function ChatSidebar() {
 
     // Defer slightly so the user message renders first.
     setTimeout(() => {
-      const entry = matchEntry(text);
-      if (entry) {
-        const result = entry.mutation(graph);
-        if (result) {
-          setGraph(result.graph);
-          pushChat({
-            role: 'copilot',
-            text: entry.reply,
-            event: { label: result.eventLabel },
-          });
-          return;
-        }
+      // Pick a matched entry if any keyword overlaps; otherwise pick a
+      // generic fallback that still mutates the graph.
+      const entry = matchEntry(text) ?? fallbackEntry(text);
+      const result = entry.mutation(graph);
+      if (result) {
+        setGraph(result.graph);
+        pushChat({
+          role: 'copilot',
+          text: entry.reply,
+          event: { label: result.eventLabel },
+        });
+      } else {
+        // Mutation refused (e.g. no Agent node exists in the graph).
+        pushChat({
+          role: 'copilot',
+          text: `${entry.reply.replace(/\.$/, '')} — but the current graph doesn't have the right shape for this edit, so nothing changed.`,
+        });
       }
-      // Fallback
-      pushChat({
-        role: 'copilot',
-        text: FALLBACK_REPLY(text),
-      });
-    }, 280);
+    }, 320);
   };
 
   return (
@@ -118,7 +118,7 @@ function greetingFor(t: string) {
   if (t === 'support')
     return "Classify-then-route support agent. The refund branch reads from a Memory store of past tickets; the technical branch searches your docs. Want to add a tone-matching guardrail?";
   if (t === 'email')
-    return "Inbox assistant with three Skills (draft / summarize / schedule). Human-in-the-loop approval before sending. Add a tone Skill?";
+    return "Triage-first inbox: each email is classified as request / info-sharing / meeting / spam, then routed. Drafts and meetings go through human approval before sending; spam is deleted; info-sharing gets summarized. Want to add a tone-matching guardrail or a custom Skill?";
   if (t === 'blank')
     return "Blank graph loaded. Try \"add a memory store\" or \"parallelize this\" to bootstrap something interesting.";
   return TEMPLATES.blank.description;

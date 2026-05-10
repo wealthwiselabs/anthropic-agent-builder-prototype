@@ -3,23 +3,26 @@ import {
   ReactFlow,
   Background,
   Controls,
-  MiniMap,
   ReactFlowProvider,
   useReactFlow,
+  MarkerType,
   type Node,
   type Edge,
   type Connection,
   type NodeChange,
   type EdgeChange,
-  applyNodeChanges,
-  applyEdgeChanges,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { nodeTypes } from './nodes';
 import { useStore } from '../../store/useStore';
-import type { GraphNode, NodeKind, AnyNodeData } from '../../types';
+import type { NodeKind, AnyNodeData } from '../../types';
 
 // Wrap React Flow, plumb nodes/edges from Zustand, persist position changes back.
+//
+// Important: only sync user-meaningful changes (position, selection, removal) back
+// into our store. Internal React Flow events like "dimensions" updates fire on
+// every layout pass — feeding them back into Zustand causes a re-render loop
+// (and shows up in Vite as ResizeObserver loop warnings, with empty canvas).
 export function Canvas() {
   return (
     <ReactFlowProvider>
@@ -33,6 +36,9 @@ function CanvasInner() {
   const setGraph = useStore((s) => s.setGraph);
   const selectedNodeId = useStore((s) => s.selectedNodeId);
   const selectNode = useStore((s) => s.selectNode);
+  const removeNode = useStore((s) => s.removeNode);
+  const removeEdge = useStore((s) => s.removeEdge);
+  const addEdge = useStore((s) => s.addEdge);
   const addNode = useStore((s) => s.addNode);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const { screenToFlowPosition } = useReactFlow();
@@ -59,80 +65,73 @@ function CanvasInner() {
         label: e.label,
         labelStyle: { fontSize: 11, fill: '#6B6862' },
         labelBgStyle: { fill: '#FAFAF7' },
+        labelBgPadding: [4, 2] as [number, number],
         animated: e.animated,
-        type: 'smoothstep',
+        type: 'default',
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#9C988E', width: 16, height: 16 },
+        style: { stroke: '#B8B3A8', strokeWidth: 1.5 },
       })),
     [graph.edges]
   );
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
-      const updated = applyNodeChanges(changes, nodes);
-      setGraph({
-        nodes: updated.map(
-          (u): GraphNode => {
-            const original = graph.nodes.find((g) => g.id === u.id);
-            return {
-              id: u.id,
-              type: (original?.type ?? 'agent'),
-              position: u.position ?? original?.position ?? { x: 0, y: 0 },
-              data: original?.data ?? ({} as GraphNode['data']),
-            };
-          }
-        ),
-        edges: graph.edges,
-      });
+      // Collect just the changes we care about. Skip dimensions/internal events.
+      let posUpdates: Map<string, { x: number; y: number }> | null = null;
+      const removals: string[] = [];
+      let selection: { id: string; selected: boolean } | null = null;
 
-      // Track selection
-      const selectionChange = changes.find(
-        (c) => c.type === 'select'
-      );
-      if (selectionChange && selectionChange.type === 'select') {
-        selectNode(selectionChange.selected ? selectionChange.id : null);
+      for (const c of changes) {
+        if (c.type === 'position' && c.position) {
+          posUpdates ??= new Map();
+          posUpdates.set(c.id, c.position);
+        } else if (c.type === 'remove') {
+          removals.push(c.id);
+        } else if (c.type === 'select') {
+          selection = { id: c.id, selected: c.selected };
+        }
+      }
+
+      if (posUpdates && posUpdates.size > 0) {
+        setGraph({
+          ...graph,
+          nodes: graph.nodes.map((n) =>
+            posUpdates!.has(n.id)
+              ? { ...n, position: posUpdates!.get(n.id)! }
+              : n
+          ),
+        });
+      }
+      for (const id of removals) removeNode(id);
+      if (selection) {
+        selectNode(selection.selected ? selection.id : null);
       }
     },
-    [graph, nodes, setGraph, selectNode]
+    [graph, setGraph, selectNode, removeNode]
   );
 
   const onEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
-      const updated = applyEdgeChanges(changes, edges) as Edge[];
-      setGraph({
-        nodes: graph.nodes,
-        edges: updated.map((u) => {
-          const original = graph.edges.find((g) => g.id === u.id);
-          return {
-            id: u.id,
-            source: u.source,
-            target: u.target,
-            sourceHandle: u.sourceHandle ?? original?.sourceHandle,
-            label: original?.label,
-            animated: original?.animated,
-          };
-        }),
-      });
+      // Only persist removals; position/animated changes don't apply to edges in our model.
+      for (const c of changes) {
+        if (c.type === 'remove') removeEdge(c.id);
+      }
     },
-    [graph, edges, setGraph]
+    [removeEdge]
   );
 
   const onConnect = useCallback(
     (conn: Connection) => {
       if (!conn.source || !conn.target) return;
       const id = `e-${crypto.randomUUID().slice(0, 8)}`;
-      setGraph({
-        nodes: graph.nodes,
-        edges: [
-          ...graph.edges,
-          {
-            id,
-            source: conn.source,
-            target: conn.target,
-            sourceHandle: conn.sourceHandle ?? undefined,
-          },
-        ],
+      addEdge({
+        id,
+        source: conn.source,
+        target: conn.target,
+        sourceHandle: conn.sourceHandle ?? undefined,
       });
     },
-    [graph, setGraph]
+    [addEdge]
   );
 
   const onDragOver = useCallback((e: React.DragEvent) => {
@@ -172,21 +171,18 @@ function CanvasInner() {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         fitView
-        fitViewOptions={{ padding: 0.18, includeHiddenNodes: false }}
+        fitViewOptions={{ padding: 0.08, maxZoom: 1.2, includeHiddenNodes: false }}
         proOptions={{ hideAttribution: true }}
         minZoom={0.4}
         maxZoom={1.6}
-        defaultEdgeOptions={{ type: 'smoothstep' }}
+        defaultEdgeOptions={{
+          type: 'default',
+          markerEnd: { type: MarkerType.ArrowClosed, color: '#9C988E', width: 16, height: 16 },
+          style: { stroke: '#B8B3A8', strokeWidth: 1.5 },
+        }}
       >
         <Background gap={16} size={1} color="#E8E5DD" />
         <Controls position="bottom-center" showInteractive={false} />
-        <MiniMap
-          position="bottom-right"
-          pannable
-          zoomable
-          nodeColor={() => '#EDF1FA'}
-          maskColor="rgba(247, 245, 240, 0.6)"
-        />
       </ReactFlow>
     </div>
   );

@@ -9,14 +9,15 @@ const STEPS = [
   'Pushing initial commit…',
 ];
 
-// Repo we maintain that the GitHub success link points to.
-// Replace this URL when the sample scaffold repo is created.
-const SAMPLE_REPO_URL = 'https://github.com/eric-sun-pm/anthropic-agent-builder-sample';
+// "Open in GitHub" link target. Points at the prototype's own repo so the
+// click doesn't 404. In a real product this would be the freshly created
+// per-agent repo.
+const SAMPLE_REPO_URL = 'https://github.com/wealthwiselabs/anthropic-agent-builder-prototype';
 
 export function DeployGitHubSuccess() {
   const agentName = useStore((s) => s.agentName);
   const slug = agentName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'my-agent';
-  const repoName = `eric-sun-pm/${slug}`;
+  const repoName = `wealthwiselabs/${slug}`;
   const commitHash = useMemo(() => randomHex(7), []);
 
   const [doneStep, setDoneStep] = useState(-1);

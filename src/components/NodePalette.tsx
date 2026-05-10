@@ -182,7 +182,7 @@ const ENTRIES: { group: string; items: PaletteEntry[] }[] = [
 
 export function NodePalette() {
   return (
-    <aside className="w-[210px] shrink-0 border-r border-border bg-chrome p-3 overflow-y-auto">
+    <aside className="w-[210px] shrink-0 border-l border-border bg-chrome p-3 overflow-y-auto">
       {ENTRIES.map((g) => (
         <div key={g.group} className="mb-3">
           <div className="text-[11px] uppercase tracking-wide text-muted px-1 mb-1">
