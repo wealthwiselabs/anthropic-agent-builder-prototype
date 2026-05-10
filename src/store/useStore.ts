@@ -24,7 +24,8 @@ type StoreState = {
 
   // Chat
   chat: ChatMessage[];
-  pushChat: (m: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
+  pushChat: (m: Omit<ChatMessage, 'id' | 'timestamp'>) => string;
+  updateChat: (id: string, patch: Partial<Omit<ChatMessage, 'id' | 'timestamp'>>) => void;
   clearChat: () => void;
 
   // View state (graph editor vs read-only code view, only used in build mode)
@@ -76,12 +77,16 @@ export const useStore = create<StoreState>((set) => ({
     set((s) => ({ graph: { ...s.graph, edges: s.graph.edges.filter((e) => e.id !== id) } })),
 
   chat: [],
-  pushChat: (m) =>
+  pushChat: (m) => {
+    const id = crypto.randomUUID();
     set((s) => ({
-      chat: [
-        ...s.chat,
-        { ...m, id: crypto.randomUUID(), timestamp: Date.now() },
-      ],
+      chat: [...s.chat, { ...m, id, timestamp: Date.now() }],
+    }));
+    return id;
+  },
+  updateChat: (id, patch) =>
+    set((s) => ({
+      chat: s.chat.map((m) => (m.id === id ? { ...m, ...patch } : m)),
     })),
   clearChat: () => set({ chat: [] }),
 

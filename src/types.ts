@@ -140,4 +140,6 @@ export type ChatMessage = {
   timestamp: number;
   // Optional inline event card describing a graph mutation.
   event?: { label: string };
+  // True while the copilot is "thinking" — renders animated dots instead of text.
+  thinking?: boolean;
 };

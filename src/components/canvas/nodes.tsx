@@ -52,7 +52,7 @@ function NodeShell({ icon, iconBg, title, subtitle, selected, children, width }:
   return (
     <div
       className={clsx(
-        'bg-white rounded-2xl px-3 py-2.5 transition-shadow flex items-center gap-2.5 select-none',
+        'bg-white rounded-2xl px-3 py-2.5 transition-shadow flex items-center gap-2.5 select-none animate-node-spawn',
         selected ? 'shadow-node-selected' : 'shadow-node'
       )}
       style={{ width: width ?? 200 }}
