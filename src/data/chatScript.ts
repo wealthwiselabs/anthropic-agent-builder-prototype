@@ -309,24 +309,78 @@ const editLeadAgentPrompt = (userText: string): Mutation => (graph) => {
 
 const addNoteCapturing = (userText: string): Mutation => (graph) => {
   const noteId = id('note');
+  const end = graph.nodes.find((n) => n.type === 'end');
+
+  // If the graph has an End node, splice the Note in between whoever was
+  // feeding End and End itself. Otherwise hang it off the lead agent.
+  if (end) {
+    const incomingToEnd = graph.edges.filter((e) => e.target === end.id);
+    // Position the Note just before End (roughly at end.x - 240, same y).
+    const pos = { x: end.position.x - 240, y: end.position.y };
+    const noteNode: GraphNode = {
+      id: noteId,
+      type: 'note',
+      position: pos,
+      data: { kind: 'note', label: 'Copilot note', body: userText.slice(0, 240) },
+    };
+
+    // Reroute every incoming-to-End edge to land on the Note instead, then
+    // add a single Note → End bridge.
+    const rerouted: GraphEdge[] = incomingToEnd.map((e) => ({
+      ...e,
+      target: noteId,
+    }));
+    const others = graph.edges.filter(
+      (e) => !incomingToEnd.find((i) => i.id === e.id)
+    );
+    const bridge: GraphEdge = {
+      id: id('e'),
+      source: noteId,
+      target: end.id,
+    };
+
+    return {
+      graph: {
+        nodes: [...graph.nodes, noteNode],
+        edges: [...others, ...rerouted, bridge],
+      },
+      eventLabel: 'Added a Note before End',
+    };
+  }
+
+  // No End node — attach Note as a downstream of the lead agent.
   const lead = graph.nodes.find((n) => n.type === 'agent');
-  const pos = lead
-    ? { x: lead.position.x + 240, y: lead.position.y + 220 }
-    : { x: 240, y: 240 };
+  if (!lead) {
+    // Bare graph: just drop a free Note.
+    return {
+      graph: {
+        ...graph,
+        nodes: [
+          ...graph.nodes,
+          {
+            id: noteId,
+            type: 'note',
+            position: { x: 240, y: 240 },
+            data: { kind: 'note', label: 'Copilot note', body: userText.slice(0, 240) },
+          },
+        ],
+      },
+      eventLabel: 'Added a free-floating Note (no flow to attach to)',
+    };
+  }
+
+  const noteNode: GraphNode = {
+    id: noteId,
+    type: 'note',
+    position: { x: lead.position.x + 280, y: lead.position.y + 160 },
+    data: { kind: 'note', label: 'Copilot note', body: userText.slice(0, 240) },
+  };
   return {
     graph: {
-      ...graph,
-      nodes: [
-        ...graph.nodes,
-        {
-          id: noteId,
-          type: 'note',
-          position: pos,
-          data: { kind: 'note', label: 'Copilot note', body: userText.slice(0, 240) },
-        },
-      ],
+      nodes: [...graph.nodes, noteNode],
+      edges: [...graph.edges, { id: id('e'), source: lead.id, target: noteId }],
     },
-    eventLabel: 'Added a Note capturing your request',
+    eventLabel: 'Added a Note linked to the lead agent',
   };
 };
 

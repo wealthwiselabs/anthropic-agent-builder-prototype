@@ -344,13 +344,17 @@ export function SkillNode({ data, selected }: NodeProps) {
 export function NoteNode({ data, selected }: NodeProps) {
   const d = data as unknown as NoteNodeData;
   return (
-    <NodeShell
-      icon={<StickyNote className="w-4 h-4 text-yellow-700" />}
-      iconBg="#FFF8DD"
-      title={d.label}
-      subtitle={d.body}
-      selected={selected}
-    />
+    <>
+      <Handle type="target" position={Position.Left} />
+      <NodeShell
+        icon={<StickyNote className="w-4 h-4 text-yellow-700" />}
+        iconBg="#FFF8DD"
+        title={d.label}
+        subtitle={d.body}
+        selected={selected}
+      />
+      <Handle type="source" position={Position.Right} />
+    </>
   );
 }
 

@@ -63,12 +63,24 @@
   stroke: #D97757;
   stroke-width: 2;
 }
+/* Handles are the small dots on a node's left/right edges where users
+   drag to create connections. Made them larger + a hover ring so it's
+   visually clear they're grabbable. */
 .react-flow__handle {
   background: #B8B3A8;
   border: 2px solid #FAFAF7;
-  width: 10px;
-  height: 10px;
+  width: 14px;
+  height: 14px;
+  transition: background 150ms, box-shadow 150ms, transform 150ms;
 }
 .react-flow__handle:hover {
   background: #D97757;
+  transform: scale(1.15);
+  box-shadow: 0 0 0 5px rgba(217, 119, 87, 0.18);
+}
+/* While dragging a connection, every potential target handle pulses. */
+.react-flow__handle.connectingfrom,
+.react-flow__handle.connectionindicator {
+  background: #D97757;
+  box-shadow: 0 0 0 5px rgba(217, 119, 87, 0.22);
 }
