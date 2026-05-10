@@ -177,6 +177,11 @@ function CanvasInner() {
         maxZoom={1.6}
         // Forgiving connection drop radius so users don't need precision aim.
         connectionRadius={50}
+        // Left-click is dedicated to nodes + handles (selecting, moving,
+        // connecting). Pan only with middle-click (1) or right-click (2),
+        // so the pan gesture can never hijack a connection drag started
+        // just outside a handle. Scroll-wheel still zooms.
+        panOnDrag={[1, 2]}
         defaultEdgeOptions={{
           type: 'default',
           markerEnd: { type: MarkerType.ArrowClosed, color: '#9C988E', width: 16, height: 16 },
