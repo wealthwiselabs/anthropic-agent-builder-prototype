@@ -5,83 +5,72 @@ import type { Graph, TemplateId } from '../types';
 // - support: Memory store + File search as composable nodes
 // - email:   Skills as composable nodes + User approval
 
+// All templates flow top → bottom. Nodes are positioned with column x
+// values that roughly center under their parent and row y values stepping
+// down by ~140-160px per logical "level".
+
 const TRAVEL: Graph = {
   nodes: [
-    {
-      id: 'start',
-      type: 'start',
-      position: { x: 80, y: 240 },
-      data: { kind: 'start', label: 'Start' },
-    },
+    { id: 'start',         type: 'start',    position: { x: 460, y: 20 },  data: { kind: 'start', label: 'Start' } },
     {
       id: 'lead',
       type: 'agent',
-      position: { x: 280, y: 240 },
+      position: { x: 400, y: 140 },
       data: {
         kind: 'agent',
         label: 'Travel Coordinator',
-        prompt: 'You orchestrate a travel-planning workflow. Decompose the user\'s trip request into flight, hotel, and itinerary work; delegate to specialists; synthesize results.',
+        prompt: "You orchestrate a travel-planning workflow. Decompose the user's trip request into flight, hotel, and itinerary work; delegate to specialists; synthesize results.",
         model: 'claude-opus-4-7',
         tools: ['web_search'],
         dreaming: true,
       },
     },
+    // Three specialist subagents fan out horizontally below the coordinator.
     {
       id: 'sub-flight',
       type: 'subagent',
-      position: { x: 600, y: 80 },
+      position: { x: 100, y: 320 },
       data: {
-        kind: 'subagent',
-        label: 'Flight Search',
+        kind: 'subagent', label: 'Flight Search',
         prompt: 'Search flight options for the requested dates and destination.',
-        model: 'claude-sonnet-4-6',
-        tools: ['web_search'],
+        model: 'claude-sonnet-4-6', tools: ['web_search'],
       },
     },
     {
       id: 'sub-hotel',
       type: 'subagent',
-      position: { x: 600, y: 240 },
+      position: { x: 410, y: 320 },
       data: {
-        kind: 'subagent',
-        label: 'Hotel Booking',
+        kind: 'subagent', label: 'Hotel Booking',
         prompt: 'Find lodging matching budget and preferences.',
-        model: 'claude-sonnet-4-6',
-        tools: ['mcp:bookings'],
+        model: 'claude-sonnet-4-6', tools: ['mcp:bookings'],
       },
     },
     {
       id: 'sub-itinerary',
       type: 'subagent',
-      position: { x: 600, y: 400 },
+      position: { x: 720, y: 320 },
       data: {
-        kind: 'subagent',
-        label: 'Itinerary Builder',
+        kind: 'subagent', label: 'Itinerary Builder',
         prompt: 'Build a day-by-day itinerary using the selected flights and hotel.',
-        model: 'claude-sonnet-4-6',
-        tools: [],
+        model: 'claude-sonnet-4-6', tools: [],
       },
     },
     {
       id: 'ifelse',
       type: 'ifelse',
-      position: { x: 920, y: 240 },
+      position: { x: 410, y: 500 },
       data: { kind: 'ifelse', label: 'Have plan?', branches: ['yes', 'no'] },
     },
-    {
-      id: 'end',
-      type: 'end',
-      position: { x: 1180, y: 240 },
-      data: { kind: 'end', label: 'End' },
-    },
+    { id: 'end', type: 'end', position: { x: 470, y: 660 }, data: { kind: 'end', label: 'End' } },
   ],
   edges: [
     { id: 'e1', source: 'start', target: 'lead' },
-    { id: 'e2', source: 'lead', target: 'sub-flight', label: 'parallel' },
-    { id: 'e3', source: 'lead', target: 'sub-hotel', label: 'parallel' },
+    { id: 'e2', source: 'lead', target: 'sub-flight',    label: 'parallel' },
+    { id: 'e3', source: 'lead', target: 'sub-hotel',     label: 'parallel' },
     { id: 'e4', source: 'lead', target: 'sub-itinerary', label: 'parallel' },
-    { id: 'e5', source: 'sub-flight', target: 'ifelse' },
-    { id: 'e6', source: 'sub-hotel', target: 'ifelse' },
+    { id: 'e5', source: 'sub-flight',    target: 'ifelse' },
+    { id: 'e6', source: 'sub-hotel',     target: 'ifelse' },
     { id: 'e7', source: 'sub-itinerary', target: 'ifelse' },
     { id: 'e8', source: 'ifelse', sourceHandle: 'yes', target: 'end', label: 'yes' },
   ],
@@ -89,90 +78,68 @@ const TRAVEL: Graph = {
 
 const SUPPORT: Graph = {
   nodes: [
+    { id: 'start',    type: 'start',    position: { x: 460, y: 20 },  data: { kind: 'start', label: 'Start' } },
     {
-      id: 'start',
-      type: 'start',
-      position: { x: 80, y: 280 },
-      data: { kind: 'start', label: 'Start' },
-    },
-    {
-      id: 'classify',
-      type: 'classify',
-      position: { x: 260, y: 280 },
+      id: 'classify', type: 'classify',
+      position: { x: 400, y: 140 },
       data: { kind: 'classify', label: 'Classify intent', intents: ['refund', 'technical', 'general'] },
     },
+    // Memory and file-search are side inputs feeding into the branch agents
+    // — positioned in the same row as the agents but offset to one side.
     {
-      id: 'memory',
-      type: 'memory',
-      position: { x: 520, y: 80 },
+      id: 'memory',   type: 'memory',
+      position: { x: -200, y: 340 },
       data: { kind: 'memory', label: 'Memory store', storeName: 'customer-history' },
     },
     {
-      id: 'agent-refund',
-      type: 'agent',
-      position: { x: 520, y: 180 },
+      id: 'agent-refund', type: 'agent',
+      position: { x: 60, y: 340 },
       data: {
-        kind: 'agent',
-        label: 'Refund agent',
+        kind: 'agent', label: 'Refund agent',
         prompt: 'Handle refund requests. Pull past tickets from the customer history Memory store before responding.',
-        model: 'claude-sonnet-4-6',
-        tools: [],
-        memoryRef: 'memory',
+        model: 'claude-sonnet-4-6', tools: [], memoryRef: 'memory',
       },
     },
     {
-      id: 'fileSearch',
-      type: 'fileSearch',
-      position: { x: 520, y: 320 },
+      id: 'fileSearch', type: 'fileSearch',
+      position: { x: 280, y: 200 },
       data: { kind: 'fileSearch', label: 'Docs search', source: 'product-docs' },
     },
     {
-      id: 'agent-tech',
-      type: 'agent',
-      position: { x: 520, y: 420 },
+      id: 'agent-tech', type: 'agent',
+      position: { x: 440, y: 340 },
       data: {
-        kind: 'agent',
-        label: 'Technical agent',
+        kind: 'agent', label: 'Technical agent',
         prompt: 'Resolve technical issues using product docs and known fixes.',
-        model: 'claude-sonnet-4-6',
-        tools: ['file_search'],
+        model: 'claude-sonnet-4-6', tools: ['file_search'],
       },
     },
     {
-      id: 'guardrails',
-      type: 'guardrails',
-      position: { x: 800, y: 420 },
+      id: 'agent-general', type: 'agent',
+      position: { x: 820, y: 340 },
+      data: {
+        kind: 'agent', label: 'General agent',
+        prompt: 'Handle general support inquiries.',
+        model: 'claude-sonnet-4-6', tools: [],
+      },
+    },
+    {
+      id: 'guardrails', type: 'guardrails',
+      position: { x: 460, y: 520 },
       data: { kind: 'guardrails', label: 'Guardrails', rules: ['no PII leakage', 'no harmful instructions'] },
     },
-    {
-      id: 'agent-general',
-      type: 'agent',
-      position: { x: 520, y: 540 },
-      data: {
-        kind: 'agent',
-        label: 'General agent',
-        prompt: 'Handle general support inquiries.',
-        model: 'claude-sonnet-4-6',
-        tools: [],
-      },
-    },
-    {
-      id: 'end',
-      type: 'end',
-      position: { x: 1060, y: 360 },
-      data: { kind: 'end', label: 'End' },
-    },
+    { id: 'end', type: 'end', position: { x: 500, y: 660 }, data: { kind: 'end', label: 'End' } },
   ],
   edges: [
-    { id: 'e1', source: 'start', target: 'classify' },
-    { id: 'e2', source: 'classify', sourceHandle: 'refund', target: 'agent-refund', label: 'refund' },
-    { id: 'e3', source: 'classify', sourceHandle: 'technical', target: 'agent-tech', label: 'technical' },
-    { id: 'e4', source: 'classify', sourceHandle: 'general', target: 'agent-general', label: 'general' },
-    { id: 'e5', source: 'memory', target: 'agent-refund' },
-    { id: 'e6', source: 'fileSearch', target: 'agent-tech' },
-    { id: 'e7', source: 'agent-refund', target: 'end' },
-    { id: 'e8', source: 'agent-tech', target: 'guardrails' },
-    { id: 'e9', source: 'guardrails', target: 'end' },
+    { id: 'e1',  source: 'start',         target: 'classify' },
+    { id: 'e2',  source: 'classify',      sourceHandle: 'refund',    target: 'agent-refund',  label: 'refund' },
+    { id: 'e3',  source: 'classify',      sourceHandle: 'technical', target: 'agent-tech',    label: 'technical' },
+    { id: 'e4',  source: 'classify',      sourceHandle: 'general',   target: 'agent-general', label: 'general' },
+    { id: 'e5',  source: 'memory',        target: 'agent-refund' },
+    { id: 'e6',  source: 'fileSearch',    target: 'agent-tech' },
+    { id: 'e7',  source: 'agent-refund',  target: 'end' },
+    { id: 'e8',  source: 'agent-tech',    target: 'guardrails' },
+    { id: 'e9',  source: 'guardrails',    target: 'end' },
     { id: 'e10', source: 'agent-general', target: 'end' },
   ],
 };
@@ -184,53 +151,40 @@ const EMAIL: Graph = {
   // - info       → summarize_thread             → End
   // - spam       → End (deleted)
   nodes: [
-    {
-      id: 'start',
-      type: 'start',
-      position: { x: 40, y: 280 },
-      data: { kind: 'start', label: 'Start' },
-    },
+    { id: 'start', type: 'start', position: { x: 360, y: 20 }, data: { kind: 'start', label: 'Start' } },
     {
       id: 'triage',
       type: 'classify',
-      position: { x: 240, y: 240 },
+      position: { x: 300, y: 140 },
       data: {
         kind: 'classify',
         label: 'Triage email',
-        // Order matches top-to-bottom Skill positions on the right.
         intents: ['request', 'info-sharing', 'meeting', 'spam'],
       },
     },
+    // Three Skills fan out as the second row (spam routes directly to End).
     {
-      id: 'skill-draft',
-      type: 'skill',
-      position: { x: 540, y: 60 },
+      id: 'skill-draft', type: 'skill',
+      position: { x: 60, y: 340 },
       data: { kind: 'skill', label: 'draft_reply', description: 'Compose a reply matching tone and prior thread context.' },
     },
     {
-      id: 'skill-summary',
-      type: 'skill',
-      position: { x: 540, y: 240 },
+      id: 'skill-summary', type: 'skill',
+      position: { x: 320, y: 340 },
       data: { kind: 'skill', label: 'summarize_thread', description: 'Summarize a long thread into action items.' },
     },
     {
-      id: 'skill-schedule',
-      type: 'skill',
-      position: { x: 540, y: 420 },
+      id: 'skill-schedule', type: 'skill',
+      position: { x: 580, y: 340 },
       data: { kind: 'skill', label: 'schedule_meeting', description: 'Propose times via the calendar tool.' },
     },
+    // Approval is downstream of draft + schedule; summary bypasses it.
     {
-      id: 'approval',
-      type: 'approval',
-      position: { x: 840, y: 230 },
+      id: 'approval', type: 'approval',
+      position: { x: 220, y: 500 },
       data: { kind: 'approval', label: 'User approval' },
     },
-    {
-      id: 'end',
-      type: 'end',
-      position: { x: 1100, y: 290 },
-      data: { kind: 'end', label: 'End' },
-    },
+    { id: 'end', type: 'end', position: { x: 380, y: 660 }, data: { kind: 'end', label: 'End' } },
   ],
   edges: [
     { id: 'e-start',    source: 'start',          target: 'triage' },
@@ -247,30 +201,17 @@ const EMAIL: Graph = {
 
 const BLANK: Graph = {
   nodes: [
+    { id: 'start', type: 'start', position: { x: 460, y: 40 },  data: { kind: 'start', label: 'Start' } },
     {
-      id: 'start',
-      type: 'start',
-      position: { x: 200, y: 240 },
-      data: { kind: 'start', label: 'Start' },
-    },
-    {
-      id: 'agent',
-      type: 'agent',
-      position: { x: 460, y: 240 },
+      id: 'agent', type: 'agent',
+      position: { x: 400, y: 200 },
       data: {
-        kind: 'agent',
-        label: 'New agent',
+        kind: 'agent', label: 'New agent',
         prompt: 'You are a helpful assistant.',
-        model: 'claude-sonnet-4-6',
-        tools: [],
+        model: 'claude-sonnet-4-6', tools: [],
       },
     },
-    {
-      id: 'end',
-      type: 'end',
-      position: { x: 720, y: 240 },
-      data: { kind: 'end', label: 'End' },
-    },
+    { id: 'end', type: 'end', position: { x: 460, y: 400 }, data: { kind: 'end', label: 'End' } },
   ],
   edges: [
     { id: 'e1', source: 'start', target: 'agent' },

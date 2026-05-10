@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store/useStore';
 import type {
   AgentNodeData,
@@ -10,7 +11,11 @@ import type {
   NoteNodeData,
   SkillNodeData,
 } from '../types';
-import { Trash2, X, Moon } from 'lucide-react';
+import {
+  Trash2, X, Moon, Plus,
+  Boxes, Search, Globe, Code2, Terminal, Image as ImageIcon,
+  FunctionSquare, Settings,
+} from 'lucide-react';
 
 const MODELS: ModelId[] = ['claude-opus-4-7', 'claude-sonnet-4-6', 'claude-haiku-4-5'];
 
@@ -195,17 +200,90 @@ function AgentFields({ nodeId, data }: { nodeId: string; data: AgentNodeData }) 
   );
 }
 
+// Tool picker — opens a popover with a categorized list of tools (modeled
+// after the "Add tool" picker in mature agent builders). Picking an item
+// adds it to the agent's `tools` array; "Custom" prompts for a free-form name.
+type ToolEntry = { name: string; icon: React.ReactNode };
+const TOOL_GROUPS: { label: string; items: ToolEntry[] }[] = [
+  {
+    label: 'Hosted',
+    items: [
+      { name: 'mcp_server',       icon: <Boxes className="w-3.5 h-3.5" /> },
+      { name: 'file_search',      icon: <Search className="w-3.5 h-3.5" /> },
+      { name: 'web_search',       icon: <Globe className="w-3.5 h-3.5" /> },
+      { name: 'code_interpreter', icon: <Code2 className="w-3.5 h-3.5" /> },
+      { name: 'shell',            icon: <Terminal className="w-3.5 h-3.5" /> },
+      { name: 'image_generation', icon: <ImageIcon className="w-3.5 h-3.5" /> },
+    ],
+  },
+  {
+    label: 'Local',
+    items: [
+      { name: 'function', icon: <FunctionSquare className="w-3.5 h-3.5" /> },
+      { name: 'custom',   icon: <Settings className="w-3.5 h-3.5" /> },
+    ],
+  },
+];
+
 function AddToolButton({ onAdd }: { onAdd: (t: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Click-outside dismiss.
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [open]);
+
+  const pick = (name: string) => {
+    if (name === 'custom') {
+      const t = window.prompt('Custom tool name (e.g. mcp:notion)');
+      if (t) onAdd(t);
+    } else {
+      onAdd(name);
+    }
+    setOpen(false);
+  };
+
   return (
-    <button
-      onClick={() => {
-        const t = window.prompt('Tool name (e.g. web_search, mcp:notion)');
-        if (t) onAdd(t);
-      }}
-      className="text-[11px] bg-white border border-dashed border-border rounded-full px-2 py-0.5 text-muted hover:text-ink hover:border-ink/30"
-    >
-      + Add
-    </button>
+    <div className="relative inline-block" ref={ref}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-0.5 text-[11px] bg-white border border-dashed border-border rounded-full px-2 py-0.5 text-muted hover:text-ink hover:border-ink/30"
+      >
+        <Plus className="w-3 h-3" /> Add
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-30 w-56 bg-white border border-border rounded-lg shadow-lg py-1.5 animate-fade-in">
+          {TOOL_GROUPS.map((g, gi) => (
+            <div key={g.label}>
+              <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-muted">
+                {g.label}
+              </div>
+              {g.items.map((it) => (
+                <button
+                  key={it.name}
+                  onClick={() => pick(it.name)}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-ink hover:bg-canvas text-left"
+                >
+                  <span className="w-5 h-5 rounded bg-canvas text-muted flex items-center justify-center shrink-0">
+                    {it.icon}
+                  </span>
+                  {it.name}
+                </button>
+              ))}
+              {gi < TOOL_GROUPS.length - 1 && (
+                <div className="my-1 border-t border-border" />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

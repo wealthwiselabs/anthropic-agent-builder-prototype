@@ -85,7 +85,7 @@ export function StartNode({ data, selected }: NodeProps) {
         selected={selected}
         width={140}
       />
-      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Bottom} />
     </>
   );
 }
@@ -94,7 +94,7 @@ export function EndNode({ data, selected }: NodeProps) {
   const d = data as unknown as StartEndNodeData;
   return (
     <>
-      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Top} />
       <NodeShell
         icon={<Square className="w-4 h-4 text-emerald-700" />}
         iconBg="#E8F3EB"
@@ -110,7 +110,7 @@ export function AgentNode({ data, selected }: NodeProps) {
   const d = data as unknown as AgentNodeData;
   return (
     <>
-      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Top} />
       <NodeShell
         icon={<Bot className="w-4 h-4 text-blue-700" />}
         iconBg="#EDF1FA"
@@ -128,7 +128,7 @@ export function AgentNode({ data, selected }: NodeProps) {
           )}
         </div>
       </NodeShell>
-      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Bottom} />
     </>
   );
 }
@@ -138,7 +138,7 @@ export function SubagentNode(props: NodeProps) {
   const d = props.data as unknown as AgentNodeData;
   return (
     <>
-      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Top} />
       <NodeShell
         icon={<Bot className="w-4 h-4 text-purple-700" />}
         iconBg="#F2EEFB"
@@ -151,7 +151,7 @@ export function SubagentNode(props: NodeProps) {
           <Pill>{d.model.replace('claude-', '')}</Pill>
         </div>
       </NodeShell>
-      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Bottom} />
     </>
   );
 }
@@ -160,7 +160,7 @@ export function ClassifyNode({ data, selected, id }: NodeProps) {
   const d = data as unknown as ClassifyNodeData;
   return (
     <>
-      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Top} />
       <NodeShell
         icon={<ListChecks className="w-4 h-4 text-amber-700" />}
         iconBg="#FCEFD5"
@@ -179,9 +179,11 @@ export function ClassifyNode({ data, selected, id }: NodeProps) {
         <Handle
           key={`${id}-h-${label}`}
           type="source"
-          position={Position.Right}
+          position={Position.Bottom}
           id={label}
-          style={{ top: 60 + i * 22 }}
+          // Spread sources evenly along the bottom edge so each branch
+          // has its own visible handle.
+          style={{ left: `${((i + 1) / (d.intents.length + 1)) * 100}%` }}
         />
       ))}
     </>
@@ -192,7 +194,7 @@ export function IfElseNode({ data, selected, id }: NodeProps) {
   const d = data as unknown as IfElseNodeData;
   return (
     <>
-      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Top} />
       <NodeShell
         icon={<GitBranch className="w-4 h-4 text-amber-700" />}
         iconBg="#FCEFD5"
@@ -211,9 +213,9 @@ export function IfElseNode({ data, selected, id }: NodeProps) {
         <Handle
           key={`${id}-h-${label}`}
           type="source"
-          position={Position.Right}
+          position={Position.Bottom}
           id={label}
-          style={{ top: 60 + i * 22 }}
+          style={{ left: `${((i + 1) / (d.branches.length + 1)) * 100}%` }}
         />
       ))}
     </>
@@ -224,7 +226,7 @@ export function WhileNode({ data, selected }: NodeProps) {
   const d = data as unknown as WhileNodeData;
   return (
     <>
-      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Top} />
       <NodeShell
         icon={<Repeat className="w-4 h-4 text-amber-700" />}
         iconBg="#FCEFD5"
@@ -232,7 +234,7 @@ export function WhileNode({ data, selected }: NodeProps) {
         subtitle="While"
         selected={selected}
       />
-      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Bottom} />
     </>
   );
 }
@@ -241,7 +243,7 @@ export function ApprovalNode({ data, selected }: NodeProps) {
   const d = data as unknown as ApprovalNodeData;
   return (
     <>
-      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Top} />
       <NodeShell
         icon={<CheckSquare className="w-4 h-4 text-amber-700" />}
         iconBg="#FCEFD5"
@@ -249,7 +251,7 @@ export function ApprovalNode({ data, selected }: NodeProps) {
         subtitle="User approval"
         selected={selected}
       />
-      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Bottom} />
     </>
   );
 }
@@ -258,7 +260,7 @@ export function MemoryNode({ data, selected }: NodeProps) {
   const d = data as unknown as MemoryNodeData;
   return (
     <>
-      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Top} />
       <NodeShell
         icon={<Database className="w-4 h-4 text-amber-900" />}
         iconBg="#F4ECE0"
@@ -267,7 +269,7 @@ export function MemoryNode({ data, selected }: NodeProps) {
         selected={selected}
         width={200}
       />
-      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Bottom} />
     </>
   );
 }
@@ -276,7 +278,7 @@ export function GuardrailsNode({ data, selected }: NodeProps) {
   const d = data as unknown as GuardrailsNodeData;
   return (
     <>
-      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Top} />
       <NodeShell
         icon={<Shield className="w-4 h-4 text-amber-900" />}
         iconBg="#F4ECE0"
@@ -284,7 +286,7 @@ export function GuardrailsNode({ data, selected }: NodeProps) {
         subtitle={`${d.rules.length} rule${d.rules.length === 1 ? '' : 's'}`}
         selected={selected}
       />
-      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Bottom} />
     </>
   );
 }
@@ -293,7 +295,7 @@ export function MCPNode({ data, selected }: NodeProps) {
   const d = data as unknown as MCPNodeData;
   return (
     <>
-      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Top} />
       <NodeShell
         icon={<Boxes className="w-4 h-4 text-amber-900" />}
         iconBg="#F4ECE0"
@@ -301,7 +303,7 @@ export function MCPNode({ data, selected }: NodeProps) {
         subtitle={d.server}
         selected={selected}
       />
-      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Bottom} />
     </>
   );
 }
@@ -310,7 +312,7 @@ export function FileSearchNode({ data, selected }: NodeProps) {
   const d = data as unknown as FileSearchNodeData;
   return (
     <>
-      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Top} />
       <NodeShell
         icon={<Search className="w-4 h-4 text-amber-900" />}
         iconBg="#F4ECE0"
@@ -318,7 +320,7 @@ export function FileSearchNode({ data, selected }: NodeProps) {
         subtitle={d.source}
         selected={selected}
       />
-      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Bottom} />
     </>
   );
 }
@@ -327,7 +329,7 @@ export function SkillNode({ data, selected }: NodeProps) {
   const d = data as unknown as SkillNodeData;
   return (
     <>
-      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Top} />
       <NodeShell
         icon={<Sparkles className="w-4 h-4 text-zinc-700" />}
         iconBg="#EFEFEF"
@@ -336,7 +338,7 @@ export function SkillNode({ data, selected }: NodeProps) {
         selected={selected}
         width={200}
       />
-      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Bottom} />
     </>
   );
 }
@@ -345,7 +347,7 @@ export function NoteNode({ data, selected }: NodeProps) {
   const d = data as unknown as NoteNodeData;
   return (
     <>
-      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Top} />
       <NodeShell
         icon={<StickyNote className="w-4 h-4 text-yellow-700" />}
         iconBg="#FFF8DD"
@@ -353,7 +355,7 @@ export function NoteNode({ data, selected }: NodeProps) {
         subtitle={d.body}
         selected={selected}
       />
-      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Bottom} />
     </>
   );
 }
@@ -383,9 +385,8 @@ function Pill({
 
 function BranchRow({ label }: { label: string }) {
   return (
-    <div className="flex items-center justify-between text-[11px] bg-canvas/70 px-2 py-1 rounded">
+    <div className="text-[11px] bg-canvas/70 px-2 py-1 rounded">
       <span className="text-ink/80 truncate">{label}</span>
-      <span className="w-2 h-2 rounded-full border border-border bg-white shrink-0" />
     </div>
   );
 }

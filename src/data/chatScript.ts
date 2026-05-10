@@ -14,7 +14,7 @@ const id = (prefix = 'n') => `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
 // ---- mutation builders ----
 
 const insertGuardrails: Mutation = (graph) => {
-  // Insert a Guardrails node before the first Agent node, redirecting incoming edges.
+  // Insert a Guardrails node above the first Agent node, redirecting incoming edges.
   const agent = graph.nodes.find((n) => n.type === 'agent');
   if (!agent) return null;
   const guardId = id('guardrails');
@@ -22,7 +22,7 @@ const insertGuardrails: Mutation = (graph) => {
   const newNode: GraphNode = {
     id: guardId,
     type: 'guardrails',
-    position: { x: agent.position.x - 220, y: agent.position.y - 90 },
+    position: { x: agent.position.x + 20, y: agent.position.y - 120 },
     data: {
       kind: 'guardrails',
       label: 'Guardrails',
@@ -68,7 +68,7 @@ const escalateOnLowConfidence: Mutation = (graph) => {
   const newIfElse: GraphNode = {
     id: ifId,
     type: 'ifelse',
-    position: { x: agent.position.x + 280, y: agent.position.y },
+    position: { x: agent.position.x + 20, y: agent.position.y + 200 },
     data: {
       kind: 'ifelse',
       label: 'Confidence ≥ 0.7?',
@@ -78,7 +78,7 @@ const escalateOnLowConfidence: Mutation = (graph) => {
   const newApproval: GraphNode = {
     id: apvId,
     type: 'approval',
-    position: { x: agent.position.x + 540, y: agent.position.y + 110 },
+    position: { x: agent.position.x - 200, y: agent.position.y + 360 },
     data: { kind: 'approval', label: 'Human review' },
   };
   return {
@@ -122,10 +122,11 @@ const addMemoryStore: Mutation = (graph) => {
     };
   }
   const memId = id('memory');
+  // Place to the side at the same row as the agent so it feels like a side input.
   const newNode: GraphNode = {
     id: memId,
     type: 'memory',
-    position: { x: agent.position.x, y: agent.position.y - 180 },
+    position: { x: agent.position.x - 260, y: agent.position.y },
     data: { kind: 'memory', label: 'Memory store', storeName: 'shared-memory' },
   };
   return {
@@ -167,10 +168,11 @@ const parallelize: Mutation = (graph) => {
   }
   const agent = graph.nodes.find((n) => n.type === 'agent');
   if (!agent) return null;
+  // Two specialists fan out below and to either side of the lead agent.
   const subA: GraphNode = {
     id: id('sub'),
     type: 'subagent',
-    position: { x: agent.position.x + 280, y: agent.position.y - 100 },
+    position: { x: agent.position.x - 180, y: agent.position.y + 200 },
     data: {
       kind: 'subagent',
       label: 'Specialist A',
@@ -182,7 +184,7 @@ const parallelize: Mutation = (graph) => {
   const subB: GraphNode = {
     id: id('sub'),
     type: 'subagent',
-    position: { x: agent.position.x + 280, y: agent.position.y + 100 },
+    position: { x: agent.position.x + 180, y: agent.position.y + 200 },
     data: {
       kind: 'subagent',
       label: 'Specialist B',
@@ -315,8 +317,8 @@ const addNoteCapturing = (userText: string): Mutation => (graph) => {
   // feeding End and End itself. Otherwise hang it off the lead agent.
   if (end) {
     const incomingToEnd = graph.edges.filter((e) => e.target === end.id);
-    // Position the Note just before End (roughly at end.x - 240, same y).
-    const pos = { x: end.position.x - 240, y: end.position.y };
+    // Position the Note just above End on the same column.
+    const pos = { x: end.position.x - 20, y: end.position.y - 140 };
     const noteNode: GraphNode = {
       id: noteId,
       type: 'note',
@@ -372,7 +374,7 @@ const addNoteCapturing = (userText: string): Mutation => (graph) => {
   const noteNode: GraphNode = {
     id: noteId,
     type: 'note',
-    position: { x: lead.position.x + 280, y: lead.position.y + 160 },
+    position: { x: lead.position.x + 20, y: lead.position.y + 220 },
     data: { kind: 'note', label: 'Copilot note', body: userText.slice(0, 240) },
   };
   return {
@@ -393,7 +395,7 @@ const addBranchAfterAgent = (userText: string): Mutation => (graph) => {
   const newIfElse: GraphNode = {
     id: ifId,
     type: 'ifelse',
-    position: { x: agent.position.x + 280, y: agent.position.y + 160 },
+    position: { x: agent.position.x + 20, y: agent.position.y + 220 },
     data: {
       kind: 'ifelse',
       label: 'New branch',
