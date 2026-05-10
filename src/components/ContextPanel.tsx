@@ -15,7 +15,7 @@ export function ContextPanel() {
   const tpl = TEMPLATE_TESTS[currentTemplate ?? 'blank'];
 
   return (
-    <aside className="w-[320px] shrink-0 border-l border-border bg-chrome flex flex-col">
+    <div className="h-full bg-chrome flex flex-col min-h-0">
       <header className="px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">
           <Database className="w-4 h-4 text-muted" />
@@ -31,7 +31,7 @@ export function ContextPanel() {
       <div className="px-4 py-3 border-t border-border text-[11px] text-muted">
         Mocked for the prototype. Switch to Build to change what the agent reads.
       </div>
-    </aside>
+    </div>
   );
 }
 

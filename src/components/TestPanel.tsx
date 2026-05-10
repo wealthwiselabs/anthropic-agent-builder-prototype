@@ -19,9 +19,14 @@ type TestMessage =
 
 // Test interface: send messages to the agent, see thinking + response.
 // All responses are scripted from `data/testResponses.ts`.
+//
+// As each scripted thinking line streams in, we also pulse-highlight the
+// corresponding node on the canvas via `setActiveNode` so the user sees
+// the agent traversing the graph (LangGraph-Studio-style live trace).
 export function TestPanel() {
   const currentTemplate = useStore((s) => s.currentTemplate);
   const agentName = useStore((s) => s.agentName);
+  const setActiveNode = useStore((s) => s.setActiveNode);
   const [messages, setMessages] = useState<TestMessage[]>([]);
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -34,6 +39,11 @@ export function TestPanel() {
       behavior: 'smooth',
     });
   }, [messages]);
+
+  // Clear active node when leaving Test mode or switching templates.
+  useEffect(() => {
+    return () => setActiveNode(null);
+  }, [setActiveNode]);
 
   const send = (raw?: string) => {
     const text = (raw ?? input).trim();
@@ -58,8 +68,10 @@ export function TestPanel() {
 
     setMessages((prev) => [...prev, userMsg, agentMsg]);
 
-    // Stagger reveal: each thinking line ~450ms, then reply.
+    // Stagger reveal: each thinking line ~450ms, then reply. As lines
+    // reveal, advance the active node through nodeSequence in proportion.
     const totalThinking = response.thinking.length;
+    const seq = response.nodeSequence ?? [];
     let i = 0;
     const tick = () => {
       i++;
@@ -71,6 +83,14 @@ export function TestPanel() {
               : m
           )
         );
+        // Map line index → node index by interpolating across the sequence.
+        if (seq.length > 0) {
+          const seqIdx = Math.min(
+            seq.length - 1,
+            Math.floor(((i - 1) / Math.max(1, totalThinking - 1)) * (seq.length - 1)),
+          );
+          setActiveNode(seq[seqIdx]);
+        }
         setTimeout(tick, 450);
       } else {
         setMessages((prev) =>
@@ -80,6 +100,11 @@ export function TestPanel() {
               : m
           )
         );
+        // Land on the last node briefly, then clear the highlight.
+        if (seq.length > 0) {
+          setActiveNode(seq[seq.length - 1]);
+          setTimeout(() => setActiveNode(null), 900);
+        }
       }
     };
     setTimeout(tick, 350);

@@ -6,6 +6,9 @@ import type { TemplateId } from '../types';
 export type TestResponse = {
   thinking: string[]; // shown as expandable "thinking" section above the answer
   reply: string;     // the final answer (markdown-ish but rendered as plain text whitespace-pre-wrap)
+  // Ordered node ids the agent traverses; mapped over the thinking-reveal
+  // duration so the active node pulses on the canvas as the agent "executes".
+  nodeSequence?: string[];
 };
 
 // A small mocked record the agent "has access to" — shown in the Context panel
@@ -62,6 +65,7 @@ const TRAVEL: TemplateTest = {
           '   4. Shibuya/Harajuku → Meiji Shrine → izakaya hop\n' +
           '   5. Tokyo Skytree → Akihabara → flight home\n\n' +
           'Total: **$5,150** for two. Want to swap any leg, push to Q4, or add a Kyoto day?',
+        nodeSequence: ['lead', 'lead', 'sub-flight', 'sub-hotel', 'sub-itinerary', 'lead', 'ifelse', 'end'],
       },
     },
     {
@@ -82,6 +86,7 @@ const TRAVEL: TemplateTest = {
           '• **Day 2** — Belém (pastéis + tower + monastery), fado at Mesa de Frades\n' +
           '• **Day 3** — Time Out Market brunch, return\n\n' +
           'Want a vegetarian-friendly food list or shift to a beachfront stay in Cascais?',
+        nodeSequence: ['lead', 'sub-flight', 'sub-hotel', 'sub-itinerary', 'lead', 'ifelse', 'end'],
       },
     },
     {
@@ -100,6 +105,7 @@ const TRAVEL: TemplateTest = {
           '• **Hotel** — first night refunded, $230 credited\n' +
           '• **Itinerary** — shifted; teamLab moved to day 2, Hakone day 3\n\n' +
           'Net: **−$185**. Confirm to apply?',
+        nodeSequence: ['lead', 'sub-flight', 'sub-hotel', 'sub-itinerary', 'lead', 'ifelse', 'end'],
       },
     },
   ],
@@ -111,6 +117,7 @@ const TRAVEL: TemplateTest = {
     ],
     reply:
       "I'd plan this as a fan-out to three subagents — flight, hotel, itinerary — then merge. The real agent would call live booking APIs; this prototype returns a canned plan.",
+    nodeSequence: ['lead', 'sub-flight', 'sub-hotel', 'sub-itinerary', 'lead'],
   },
   contextTitle: 'Travel preferences',
   contextSubtitle: "What the agent reads from your Memory store before planning.",
@@ -148,6 +155,7 @@ const SUPPORT: TemplateTest = {
         ],
         reply:
           "Sorry to hear that — order #4421 was marked delivered yesterday but you say it never arrived. I've initiated a full refund of **$89.99** to your original payment method; expect it in 3-5 business days. I'm also flagging the carrier for follow-up. Want me to ship a replacement at no charge?",
+        nodeSequence: ['classify', 'classify', 'memory', 'memory', 'agent-refund', 'agent-refund', 'end'],
       },
     },
     {
@@ -166,6 +174,7 @@ const SUPPORT: TemplateTest = {
           '2. Clear cookies for `app.example.com`\n' +
           '3. Sign in again — you should hit a fresh OAuth flow\n\n' +
           "If it still fails, share the URL and the request ID from DevTools → Network → the 403 response. I'll escalate to engineering.",
+        nodeSequence: ['classify', 'classify', 'fileSearch', 'agent-tech', 'guardrails', 'end'],
       },
     },
   ],
@@ -177,6 +186,7 @@ const SUPPORT: TemplateTest = {
     ],
     reply:
       "Happy to help. Could you share a bit more — order number, account email, or a screenshot of what you're seeing?",
+    nodeSequence: ['classify', 'agent-general', 'end'],
   },
   contextTitle: 'Customer record',
   contextSubtitle: 'Pulled from the Memory store at the start of the session.',
@@ -218,6 +228,7 @@ const EMAIL: TemplateTest = {
           '• **Bob Wu (eng)** — *Sync Tue 2pm about the search rewrite?* You\'re free.\n' +
           '• **The Agent Brief** — newsletter with 4 items: multi-agent GA, dreaming research preview, memory stores, eval primitives.\n\n' +
           "Want me to draft replies to Sarah and Bob, or just one?",
+        nodeSequence: ['triage', 'triage', 'skill-summary', 'end'],
       },
     },
     {
@@ -238,6 +249,7 @@ const EMAIL: TemplateTest = {
           '>\n' +
           '> — Eric\n\n' +
           '👉 Approve to send, or edit the draft.',
+        nodeSequence: ['triage', 'skill-draft', 'approval', 'end'],
       },
     },
     {
@@ -254,6 +266,7 @@ const EMAIL: TemplateTest = {
           'Calendar is free Tuesday 2-3pm. Drafted (awaiting approval):\n\n' +
           '> Sounds good — Tue 2pm works. Sending an invite. Anything specific to prep?\n\n' +
           '👉 Approve to send the reply + calendar invite.',
+        nodeSequence: ['triage', 'skill-schedule', 'approval', 'end'],
       },
     },
     {
@@ -270,6 +283,7 @@ const EMAIL: TemplateTest = {
           '🗑️ Moved 1 message to trash:\n\n' +
           '• "🎉 Pre-qualified for $50k grant!!" from noreply@grants-now.biz\n\n' +
           'No reply sent. (Want me to also unsubscribe from the AI newsletter, or keep it?)',
+        nodeSequence: ['triage', 'end'],
       },
     },
     {
@@ -287,6 +301,7 @@ const EMAIL: TemplateTest = {
           '• 🔴 **Sarah Chen** — Q3 status due Friday. Want me to draft?\n' +
           '• 🟡 **Bob Wu** — meeting accept needed (Tue 2pm). Want me to send the accept?\n\n' +
           '(1 newsletter can wait; 1 spam already in trash.)',
+        nodeSequence: ['triage', 'skill-draft', 'skill-schedule', 'skill-summary', 'end'],
       },
     },
   ],
@@ -297,6 +312,7 @@ const EMAIL: TemplateTest = {
     ],
     reply:
       "I wasn't sure what you wanted, so I summarized your unread. Try `summarize`, `draft a reply to <person>`, `accept the meeting`, or `clean up spam`.",
+    nodeSequence: ['triage', 'skill-summary', 'end'],
   },
   contextTitle: 'Mock inbox · Gmail',
   contextSubtitle: 'What the agent sees when you ask it to do inbox work.',
@@ -345,6 +361,7 @@ const BLANK: TemplateTest = {
     ],
     reply:
       "I'm a blank Claude agent in this prototype. I'd respond using whatever system prompt you set on the Agent node. Drag in Memory, Skills, or Guardrails (Build mode) to teach me more.",
+    nodeSequence: ['agent', 'agent', 'end'],
   },
   contextTitle: 'Agent context',
   contextSubtitle: 'Nothing wired up yet.',

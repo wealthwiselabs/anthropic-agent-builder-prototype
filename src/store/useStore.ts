@@ -14,8 +14,12 @@ type StoreState = {
   // Graph
   graph: Graph;
   selectedNodeId: string | null;
+  // Used in Test mode to pulse-highlight the node the agent is "currently
+  // executing" as scripted thinking lines reveal (LangGraph-Studio style).
+  activeNodeId: string | null;
   setGraph: (g: Graph) => void;
   selectNode: (id: string | null) => void;
+  setActiveNode: (id: string | null) => void;
   updateNodeData: (id: string, patch: Partial<GraphNode['data']>) => void;
   addNode: (n: GraphNode) => void;
   removeNode: (id: string) => void;
@@ -50,8 +54,10 @@ type StoreState = {
 export const useStore = create<StoreState>((set) => ({
   graph: { nodes: [], edges: [] },
   selectedNodeId: null,
+  activeNodeId: null,
   setGraph: (g) => set({ graph: g }),
   selectNode: (id) => set({ selectedNodeId: id }),
+  setActiveNode: (id) => set({ activeNodeId: id }),
   updateNodeData: (id, patch) =>
     set((s) => ({
       graph: {

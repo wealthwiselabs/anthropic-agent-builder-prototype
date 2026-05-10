@@ -162,16 +162,27 @@ function RightContextPanel() {
 
 // ---- Test mode ----
 //
-// Chat-with-agent takes the main column; right column shows the data sources
-// the agent has access to (mocked inbox / customer record / travel prefs).
-// Graph is hidden — to edit, click "Build" in the wizard breadcrumb.
+// Chat-with-agent takes the main column. Right column stacks a small
+// read-only graph preview (active node pulses as the agent "executes")
+// on top of the Context panel (data sources the agent has access to).
+// To edit the graph, click "1 Build" in the wizard breadcrumb.
 function TestBody() {
   return (
     <div className="flex-1 flex min-h-0">
       <div className="flex-1 min-w-0 bg-chrome">
         <TestPanel />
       </div>
-      <ContextPanel />
+      <aside className="w-[340px] shrink-0 border-l border-border bg-chrome flex flex-col min-h-0">
+        <div className="h-[44%] min-h-[260px] border-b border-border relative bg-canvas">
+          <div className="absolute top-2 left-3 z-10 text-[11px] text-muted bg-white/90 border border-border rounded-full px-2 py-0.5 shadow-sm">
+            Execution trace
+          </div>
+          <Canvas />
+        </div>
+        <div className="flex-1 min-h-0">
+          <ContextPanel />
+        </div>
+      </aside>
     </div>
   );
 }

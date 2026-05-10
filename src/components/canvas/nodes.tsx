@@ -14,7 +14,9 @@ import {
   Square,
   ListChecks,
   Moon,
+  Pause,
 } from 'lucide-react';
+import { useStore } from '../../store/useStore';
 import type {
   AgentNodeData,
   ClassifyNodeData,
@@ -39,21 +41,28 @@ import clsx from 'clsx';
 // have multiple labeled output handles.
 
 type ShellProps = {
+  // The React Flow node id is passed through so the shell can subscribe to
+  // activeNodeId from the store and pulse when it's the executing node.
+  nodeId: string;
   icon: React.ReactNode;
   iconBg: string;
   title: string;
   subtitle?: string;
+  badge?: React.ReactNode; // small marker rendered top-right (e.g. interrupt glyph)
   selected?: boolean;
   children?: React.ReactNode;
   width?: number;
 };
 
-function NodeShell({ icon, iconBg, title, subtitle, selected, children, width }: ShellProps) {
+function NodeShell({ nodeId, icon, iconBg, title, subtitle, badge, selected, children, width }: ShellProps) {
+  const isActive = useStore((s) => s.activeNodeId === nodeId);
   return (
     <div
       className={clsx(
-        'bg-white rounded-2xl px-3 py-2.5 transition-shadow flex items-center gap-2.5 select-none animate-node-spawn',
-        selected ? 'shadow-node-selected' : 'shadow-node'
+        'relative bg-white rounded-2xl px-3 py-2.5 transition-shadow flex items-center gap-2.5 select-none animate-node-spawn',
+        isActive
+          ? 'node-active shadow-node'
+          : selected ? 'shadow-node-selected' : 'shadow-node'
       )}
       style={{ width: width ?? 200 }}
     >
@@ -68,17 +77,21 @@ function NodeShell({ icon, iconBg, title, subtitle, selected, children, width }:
         {subtitle && <div className="text-[11px] text-muted truncate">{subtitle}</div>}
         {children}
       </div>
+      {badge && (
+        <span className="absolute -top-1.5 -right-1.5">{badge}</span>
+      )}
     </div>
   );
 }
 
 // ----- Concrete node components -----
 
-export function StartNode({ data, selected }: NodeProps) {
+export function StartNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as StartEndNodeData;
   return (
     <>
       <NodeShell
+        nodeId={id}
         icon={<Play className="w-4 h-4 text-emerald-700" />}
         iconBg="#E8F3EB"
         title={d.label || 'Start'}
@@ -90,12 +103,13 @@ export function StartNode({ data, selected }: NodeProps) {
   );
 }
 
-export function EndNode({ data, selected }: NodeProps) {
+export function EndNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as StartEndNodeData;
   return (
     <>
       <Handle type="target" position={Position.Top} />
       <NodeShell
+        nodeId={id}
         icon={<Square className="w-4 h-4 text-emerald-700" />}
         iconBg="#E8F3EB"
         title={d.label || 'End'}
@@ -106,12 +120,13 @@ export function EndNode({ data, selected }: NodeProps) {
   );
 }
 
-export function AgentNode({ data, selected }: NodeProps) {
+export function AgentNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as AgentNodeData;
   return (
     <>
       <Handle type="target" position={Position.Top} />
       <NodeShell
+        nodeId={id}
         icon={<Bot className="w-4 h-4 text-blue-700" />}
         iconBg="#EDF1FA"
         title={d.label}
@@ -133,18 +148,19 @@ export function AgentNode({ data, selected }: NodeProps) {
   );
 }
 
-export function SubagentNode(props: NodeProps) {
+export function SubagentNode({ id, data, selected }: NodeProps) {
   // Visually distinct from Agent — softer purple background.
-  const d = props.data as unknown as AgentNodeData;
+  const d = data as unknown as AgentNodeData;
   return (
     <>
       <Handle type="target" position={Position.Top} />
       <NodeShell
+        nodeId={id}
         icon={<Bot className="w-4 h-4 text-purple-700" />}
         iconBg="#F2EEFB"
         title={d.label}
         subtitle="Subagent"
-        selected={props.selected}
+        selected={selected}
         width={200}
       >
         <div className="flex items-center gap-1 mt-1 flex-wrap">
@@ -162,6 +178,7 @@ export function ClassifyNode({ data, selected, id }: NodeProps) {
     <>
       <Handle type="target" position={Position.Top} />
       <NodeShell
+        nodeId={id}
         icon={<ListChecks className="w-4 h-4 text-amber-700" />}
         iconBg="#FCEFD5"
         title={d.label}
@@ -196,6 +213,7 @@ export function IfElseNode({ data, selected, id }: NodeProps) {
     <>
       <Handle type="target" position={Position.Top} />
       <NodeShell
+        nodeId={id}
         icon={<GitBranch className="w-4 h-4 text-amber-700" />}
         iconBg="#FCEFD5"
         title={d.label}
@@ -222,12 +240,13 @@ export function IfElseNode({ data, selected, id }: NodeProps) {
   );
 }
 
-export function WhileNode({ data, selected }: NodeProps) {
+export function WhileNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as WhileNodeData;
   return (
     <>
       <Handle type="target" position={Position.Top} />
       <NodeShell
+        nodeId={id}
         icon={<Repeat className="w-4 h-4 text-amber-700" />}
         iconBg="#FCEFD5"
         title={d.label}
@@ -239,29 +258,39 @@ export function WhileNode({ data, selected }: NodeProps) {
   );
 }
 
-export function ApprovalNode({ data, selected }: NodeProps) {
+export function ApprovalNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as ApprovalNodeData;
   return (
     <>
       <Handle type="target" position={Position.Top} />
       <NodeShell
+        nodeId={id}
         icon={<CheckSquare className="w-4 h-4 text-amber-700" />}
         iconBg="#FCEFD5"
         title={d.label}
-        subtitle="User approval"
+        subtitle="Interrupt · waits for human input"
         selected={selected}
+        badge={
+          <span
+            title="This node pauses the graph for human input — LangGraph-style interrupt() / checkpoint."
+            className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-coral text-white shadow-sm ring-2 ring-chrome"
+          >
+            <Pause className="w-3 h-3" />
+          </span>
+        }
       />
       <Handle type="source" position={Position.Bottom} />
     </>
   );
 }
 
-export function MemoryNode({ data, selected }: NodeProps) {
+export function MemoryNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as MemoryNodeData;
   return (
     <>
       <Handle type="target" position={Position.Top} />
       <NodeShell
+        nodeId={id}
         icon={<Database className="w-4 h-4 text-amber-900" />}
         iconBg="#F4ECE0"
         title={d.label}
@@ -274,12 +303,13 @@ export function MemoryNode({ data, selected }: NodeProps) {
   );
 }
 
-export function GuardrailsNode({ data, selected }: NodeProps) {
+export function GuardrailsNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as GuardrailsNodeData;
   return (
     <>
       <Handle type="target" position={Position.Top} />
       <NodeShell
+        nodeId={id}
         icon={<Shield className="w-4 h-4 text-amber-900" />}
         iconBg="#F4ECE0"
         title={d.label}
@@ -291,12 +321,13 @@ export function GuardrailsNode({ data, selected }: NodeProps) {
   );
 }
 
-export function MCPNode({ data, selected }: NodeProps) {
+export function MCPNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as MCPNodeData;
   return (
     <>
       <Handle type="target" position={Position.Top} />
       <NodeShell
+        nodeId={id}
         icon={<Boxes className="w-4 h-4 text-amber-900" />}
         iconBg="#F4ECE0"
         title={d.label}
@@ -308,12 +339,13 @@ export function MCPNode({ data, selected }: NodeProps) {
   );
 }
 
-export function FileSearchNode({ data, selected }: NodeProps) {
+export function FileSearchNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as FileSearchNodeData;
   return (
     <>
       <Handle type="target" position={Position.Top} />
       <NodeShell
+        nodeId={id}
         icon={<Search className="w-4 h-4 text-amber-900" />}
         iconBg="#F4ECE0"
         title={d.label}
@@ -325,12 +357,13 @@ export function FileSearchNode({ data, selected }: NodeProps) {
   );
 }
 
-export function SkillNode({ data, selected }: NodeProps) {
+export function SkillNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as SkillNodeData;
   return (
     <>
       <Handle type="target" position={Position.Top} />
       <NodeShell
+        nodeId={id}
         icon={<Sparkles className="w-4 h-4 text-zinc-700" />}
         iconBg="#EFEFEF"
         title={d.label}
@@ -343,12 +376,13 @@ export function SkillNode({ data, selected }: NodeProps) {
   );
 }
 
-export function NoteNode({ data, selected }: NodeProps) {
+export function NoteNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as NoteNodeData;
   return (
     <>
       <Handle type="target" position={Position.Top} />
       <NodeShell
+        nodeId={id}
         icon={<StickyNote className="w-4 h-4 text-yellow-700" />}
         iconBg="#FFF8DD"
         title={d.label}
