@@ -175,6 +175,8 @@ function CanvasInner() {
         proOptions={{ hideAttribution: true }}
         minZoom={0.4}
         maxZoom={1.6}
+        // Forgiving connection drop radius so users don't need precision aim.
+        connectionRadius={50}
         defaultEdgeOptions={{
           type: 'default',
           markerEnd: { type: MarkerType.ArrowClosed, color: '#9C988E', width: 16, height: 16 },

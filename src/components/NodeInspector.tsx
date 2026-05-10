@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore } from '../store/useStore';
 import type {
   AgentNodeData,
@@ -227,16 +228,46 @@ const TOOL_GROUPS: { label: string; items: ToolEntry[] }[] = [
 
 function AddToolButton({ onAdd }: { onAdd: (t: string) => void }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
 
-  // Click-outside dismiss.
+  // Position the popover relative to the viewport, just below the button's
+  // right edge. Using fixed positioning + portal so the popover isn't
+  // clipped by the inspector's overflow:auto scroll container.
+  const POP_WIDTH = 224;
+  const open_ = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (!r) return;
+    setPos({
+      top: r.bottom + 6,
+      left: Math.max(8, r.right - POP_WIDTH),
+    });
+    setOpen(true);
+  };
+  const close = () => setOpen(false);
+
+  // Dismiss on outside click or Escape.
   useEffect(() => {
     if (!open) return;
-    const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    const onMouse = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (
+        popRef.current && !popRef.current.contains(t) &&
+        btnRef.current && !btnRef.current.contains(t)
+      ) {
+        close();
+      }
     };
-    document.addEventListener('mousedown', onClick);
-    return () => document.removeEventListener('mousedown', onClick);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close();
+    };
+    document.addEventListener('mousedown', onMouse);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onMouse);
+      document.removeEventListener('keydown', onKey);
+    };
   }, [open]);
 
   const pick = (name: string) => {
@@ -246,44 +277,51 @@ function AddToolButton({ onAdd }: { onAdd: (t: string) => void }) {
     } else {
       onAdd(name);
     }
-    setOpen(false);
+    close();
   };
 
   return (
-    <div className="relative inline-block" ref={ref}>
+    <>
       <button
-        onClick={() => setOpen((v) => !v)}
+        ref={btnRef}
+        onClick={() => (open ? close() : open_())}
         className="inline-flex items-center gap-0.5 text-[11px] bg-white border border-dashed border-border rounded-full px-2 py-0.5 text-muted hover:text-ink hover:border-ink/30"
       >
         <Plus className="w-3 h-3" /> Add
       </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-1 z-30 w-56 bg-white border border-border rounded-lg shadow-lg py-1.5 animate-fade-in">
-          {TOOL_GROUPS.map((g, gi) => (
-            <div key={g.label}>
-              <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-muted">
-                {g.label}
+      {open && pos &&
+        createPortal(
+          <div
+            ref={popRef}
+            style={{ position: 'fixed', top: pos.top, left: pos.left, width: POP_WIDTH }}
+            className="z-50 bg-white border border-border rounded-lg shadow-lg py-1.5 animate-fade-in"
+          >
+            {TOOL_GROUPS.map((g, gi) => (
+              <div key={g.label}>
+                <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-muted">
+                  {g.label}
+                </div>
+                {g.items.map((it) => (
+                  <button
+                    key={it.name}
+                    onClick={() => pick(it.name)}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-ink hover:bg-canvas text-left"
+                  >
+                    <span className="w-5 h-5 rounded bg-canvas text-muted flex items-center justify-center shrink-0">
+                      {it.icon}
+                    </span>
+                    {it.name}
+                  </button>
+                ))}
+                {gi < TOOL_GROUPS.length - 1 && (
+                  <div className="my-1 border-t border-border" />
+                )}
               </div>
-              {g.items.map((it) => (
-                <button
-                  key={it.name}
-                  onClick={() => pick(it.name)}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-ink hover:bg-canvas text-left"
-                >
-                  <span className="w-5 h-5 rounded bg-canvas text-muted flex items-center justify-center shrink-0">
-                    {it.icon}
-                  </span>
-                  {it.name}
-                </button>
-              ))}
-              {gi < TOOL_GROUPS.length - 1 && (
-                <div className="my-1 border-t border-border" />
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+            ))}
+          </div>,
+          document.body
+        )}
+    </>
   );
 }
 
