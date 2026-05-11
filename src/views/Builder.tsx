@@ -281,9 +281,6 @@ function DeployBody({
   return (
     <div className="flex-1 overflow-y-auto bg-canvas">
       <div className="max-w-4xl mx-auto px-10 py-12">
-        <div className="text-[11px] uppercase tracking-wide text-coral mb-2">
-          Step 3 · Deploy
-        </div>
         <h1 className="font-serif text-3xl text-ink mb-2">
           Where should <span className="italic">{agentName}</span> run?
         </h1>
