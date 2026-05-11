@@ -18,7 +18,6 @@ import { TestPanel } from '../components/TestPanel';
 import { ContextPanel } from '../components/ContextPanel';
 import { CodeView } from '../components/CodeView';
 import { WizardSteps, type WizardMode } from '../components/WizardSteps';
-import clsx from 'clsx';
 
 export function Builder() {
   const [params] = useSearchParams();
@@ -93,18 +92,6 @@ export function Builder() {
         <div className="flex items-center gap-1.5">
           <IconButton title="More"><MoreHorizontal className="w-4 h-4" /></IconButton>
           <IconButton title="Settings"><Settings className="w-4 h-4" /></IconButton>
-          {mode === 'build' && (
-            <button
-              onClick={() => setView(view === 'graph' ? 'code' : 'graph')}
-              className={clsx(
-                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm hover:bg-canvas',
-                view === 'code' ? 'text-coral' : 'text-ink'
-              )}
-              title="Toggle Code view"
-            >
-              <Code2 className="w-4 h-4" /> Code
-            </button>
-          )}
           {mode !== 'deploy' && (
             <button
               onClick={() => onWizardChange('deploy')}
@@ -120,6 +107,7 @@ export function Builder() {
       {mode === 'build' && (
         <BuildBody
           view={view}
+          setView={setView}
           onCloseCode={() => setView('graph')}
           onAdvance={() => onWizardChange('test')}
         />
@@ -145,10 +133,12 @@ function BuildBody({
   view,
   onCloseCode,
   onAdvance,
+  setView,
 }: {
   view: 'graph' | 'code';
   onCloseCode: () => void;
   onAdvance: () => void;
+  setView: (v: 'graph' | 'code') => void;
 }) {
   const graph = useStore((s) => s.graph);
   const chat = useStore((s) => s.chat);
@@ -167,12 +157,28 @@ function BuildBody({
       </aside>
       <div className="flex-1 min-w-0 relative bg-canvas">
         {view === 'graph' ? <Canvas /> : <CodeView onClose={onCloseCode} />}
+        {view === 'graph' && <CodeChip onClick={() => setView('code')} />}
         {showAdvance && (
           <NextStepCTA label="Next: Test" onClick={onAdvance} primary={primary} />
         )}
       </div>
       <RightContextPanel />
     </div>
+  );
+}
+
+// Subtle top-left "Code" chip that opens the read-only Python view.
+// Lives on the canvas (not the header) so reviewers can ignore it unless
+// they're curious about what the graph compiles to.
+function CodeChip({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      title="See the SDK code this graph compiles to"
+      className="absolute top-4 left-4 z-20 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/95 border border-border text-muted text-[12px] hover:text-ink hover:border-ink/30 shadow-sm transition-colors"
+    >
+      <Code2 className="w-3.5 h-3.5" /> Code
+    </button>
   );
 }
 

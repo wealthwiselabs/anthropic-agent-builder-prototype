@@ -45,6 +45,13 @@ const EDGES_MS = 500;
 const STEP_GAP_MS = 600;        // pause between consecutive demo steps
 const STEP_THINK_MS = 650;      // thinking dots before reply text appears
 
+// Module-level guard that survives unmount/remount cycles. Tracks the
+// (template, prompt) pair we've already auto-dispatched for, so the
+// effect can't push the user message + start the demo more than once
+// for the same URL state — even if Builder's template-load effect
+// fires twice and wipes/repopulates the chat.
+let autoplayedFor: string | null = null;
+
 export function ChatSidebar() {
   const chat = useStore((s) => s.chat);
   const pushChat = useStore((s) => s.pushChat);
@@ -75,24 +82,35 @@ export function ChatSidebar() {
   // (no auto-pushed greeting — it was a wall of text reviewers had to
   // dismiss in their head before doing anything).
   useEffect(() => {
-    if (chat.length !== 0 || !currentTemplate) return;
-    if (currentTemplate === 'email') {
-      const autoplay = params.get('autoplay') === '1';
-      const urlPrompt = params.get('prompt') || EMAIL_DEMO_PROMPT;
-      if (autoplay) {
-        pushChat({ role: 'user', text: urlPrompt });
-        demoPendingRef.current = false;
-        runDemoRef.current?.(useStore.getState().graph);
-      } else {
-        demoPendingRef.current = true;
-        setInput(EMAIL_DEMO_PROMPT);
-        pushChat({
-          role: 'copilot',
-          text: "Watch me build an email assistant from scratch. I've pre-filled a prompt — hit send and I'll wire it up step by step. You can skip ahead at any point.",
-        });
-      }
+    if (!currentTemplate) return;
+    // Reset the autoplay lock when leaving email so a future visit
+    // re-fires the demo cleanly.
+    if (currentTemplate !== 'email') {
+      autoplayedFor = null;
+      return;
     }
-    // travel / support / blank: no greeting; the empty-state chips do the work.
+
+    if (chat.length !== 0) return;
+
+    const autoplay = params.get('autoplay') === '1';
+    const urlPrompt = params.get('prompt') || EMAIL_DEMO_PROMPT;
+    const key = `${currentTemplate}:${urlPrompt}:${autoplay}`;
+    if (autoplayedFor === key) return; // already dispatched for this URL state
+
+    if (autoplay) {
+      autoplayedFor = key;
+      pushChat({ role: 'user', text: urlPrompt });
+      demoPendingRef.current = false;
+      runDemoRef.current?.(useStore.getState().graph);
+    } else {
+      autoplayedFor = key;
+      demoPendingRef.current = true;
+      setInput(EMAIL_DEMO_PROMPT);
+      pushChat({
+        role: 'copilot',
+        text: "Watch me build an email assistant from scratch. I've pre-filled a prompt — hit send and I'll wire it up step by step. You can skip ahead at any point.",
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTemplate]);
 
