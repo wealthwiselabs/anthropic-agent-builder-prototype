@@ -2,16 +2,39 @@ import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ArrowUp, Sparkles, Wand2, FastForward } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import { TEMPLATES } from '../data/templates';
-import { matchEntry, fallbackEntry, CHAT_ENTRIES } from '../data/chatScript';
+import { matchEntry, fallbackEntry } from '../data/chatScript';
 import {
   EMAIL_DEMO_PROMPT,
   EMAIL_DEMO_STEPS,
   EMAIL_FINAL,
   type DemoStep,
 } from '../data/emailDemo';
-import type { Graph } from '../types';
+import type { Graph, TemplateId } from '../types';
 import clsx from 'clsx';
+
+// Empty-state suggestion chips per template. Each chip's text routes
+// through the same matchEntry → mutation pipeline that handles typed
+// chat input, so chips and free-form prompts converge on the same logic.
+const TEMPLATE_CHIPS: Partial<Record<TemplateId, string[]>> = {
+  travel: [
+    'Add a budget guardrail',
+    'Switch the coordinator to Opus',
+    'Add a memory store for past trips',
+    'Add web search to the coordinator',
+  ],
+  support: [
+    'Add a sentiment guardrail before End',
+    'Use Sonnet for all branches',
+    'Enable dreaming on the refund agent',
+    'Escalate to a human on low confidence',
+  ],
+  blank: [
+    'Add a memory store',
+    'Parallelize this agent',
+    'Add web search',
+    'Add a guardrail',
+  ],
+};
 
 // Timing constants — the "AI working" feel comes from these spaced-out steps.
 const THINK_MS = 700;
@@ -47,22 +70,20 @@ export function ChatSidebar() {
   const timeoutsRef = useRef<number[]>([]);
   const runDemoRef = useRef<((g: Graph) => void) | null>(null);
 
-  // Greet on template load if chat is empty.
-  // For Email we kick off the demo automatically — the cold-start prompt was
-  // already submitted from the landing page (`?autoplay=1`).
+  // On template load: Email keeps the cold-start demo flow; the other
+  // templates land in a clean empty-state with curated suggestion chips
+  // (no auto-pushed greeting — it was a wall of text reviewers had to
+  // dismiss in their head before doing anything).
   useEffect(() => {
     if (chat.length !== 0 || !currentTemplate) return;
     if (currentTemplate === 'email') {
       const autoplay = params.get('autoplay') === '1';
       const urlPrompt = params.get('prompt') || EMAIL_DEMO_PROMPT;
       if (autoplay) {
-        // Auto-fire: push the user message immediately and start the demo.
         pushChat({ role: 'user', text: urlPrompt });
         demoPendingRef.current = false;
         runDemoRef.current?.(useStore.getState().graph);
       } else {
-        // Manual landing on /builder?template=email (no autoplay): show the
-        // pre-fill prompt UX so the reviewer can opt in.
         demoPendingRef.current = true;
         setInput(EMAIL_DEMO_PROMPT);
         pushChat({
@@ -70,9 +91,8 @@ export function ChatSidebar() {
           text: "Watch me build an email assistant from scratch. I've pre-filled a prompt — hit send and I'll wire it up step by step. You can skip ahead at any point.",
         });
       }
-    } else {
-      pushChat({ role: 'copilot', text: greetingFor(currentTemplate) });
     }
+    // travel / support / blank: no greeting; the empty-state chips do the work.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTemplate]);
 
@@ -243,8 +263,11 @@ export function ChatSidebar() {
             thinking={m.thinking}
           />
         ))}
-        {chat.length <= 1 && currentTemplate !== 'email' && (
-          <SuggestionChips onPick={submit} />
+        {chat.length === 0 && currentTemplate && currentTemplate !== 'email' && (
+          <EmptyStateChips
+            template={currentTemplate}
+            onPick={(t) => setInput(t)}
+          />
         )}
       </div>
 
@@ -308,16 +331,6 @@ function stageMutation(oldGraph: Graph, newGraph: Graph): {
   return { afterNodes, afterEdges: newGraph };
 }
 
-function greetingFor(t: string) {
-  if (t === 'travel')
-    return "I built a travel agent with three specialist subagents running in parallel — flight, hotel, itinerary. The lead coordinator fans out and merges results. Want to tweak it?";
-  if (t === 'support')
-    return "Classify-then-route support agent. The refund branch reads from a Memory store of past tickets; the technical branch searches your docs. Want to add a tone-matching guardrail?";
-  if (t === 'blank')
-    return "Blank graph loaded. Try \"add a memory store\" or \"parallelize this\" to bootstrap something interesting.";
-  return TEMPLATES.blank.description;
-}
-
 function Message({
   role,
   text,
@@ -361,17 +374,28 @@ function ThinkingDots() {
   );
 }
 
-function SuggestionChips({ onPick }: { onPick: (s: string) => void }) {
-  const suggestions = CHAT_ENTRIES.slice(0, 6).map((e) => e.keywords[0]);
+// Empty-state suggestion chips for travel / support / blank. Click a chip
+// to drop its text into the chat input (user reviews + hits send to run it).
+function EmptyStateChips({
+  template,
+  onPick,
+}: {
+  template: TemplateId;
+  onPick: (text: string) => void;
+}) {
+  const chips = TEMPLATE_CHIPS[template] ?? [];
+  if (chips.length === 0) return null;
   return (
-    <div className="pt-2">
-      <div className="text-[11px] text-muted mb-1.5">Try:</div>
-      <div className="flex flex-wrap gap-1.5">
-        {suggestions.map((s) => (
+    <div className="pt-2 animate-fade-in">
+      <div className="text-[11px] text-muted mb-2 flex items-center gap-1">
+        <Sparkles className="w-3 h-3 text-coral" /> Suggested edits
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {chips.map((s) => (
           <button
             key={s}
             onClick={() => onPick(s)}
-            className="text-[11px] px-2 py-0.5 bg-white border border-border rounded-full text-ink/80 hover:border-ink/30"
+            className="text-left text-[12px] px-3 py-2 bg-white border border-border rounded-lg text-ink/85 hover:border-ink/30 hover:shadow-sm transition-all"
           >
             {s}
           </button>
