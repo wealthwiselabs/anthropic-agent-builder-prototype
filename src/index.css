@@ -69,6 +69,18 @@
 .react-flow__edge-path {
   stroke: #B8B3A8;
   stroke-width: 1.5;
+  transition: stroke 120ms, stroke-width 120ms;
+}
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:focus .react-flow__edge-path,
+.react-flow__edge:focus-visible .react-flow__edge-path {
+  stroke: #D97757;
+  stroke-width: 2.5;
+}
+/* The wider invisible click-target stroke should also be a tad wider so
+   it's easier to click on the line. */
+.react-flow__edge-interaction {
+  stroke-width: 22;
 }
 .react-flow__connection-path {
   stroke: #D97757;

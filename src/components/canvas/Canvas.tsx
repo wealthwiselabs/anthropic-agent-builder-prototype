@@ -182,6 +182,10 @@ function CanvasInner() {
         // so the pan gesture can never hijack a connection drag started
         // just outside a handle. Scroll-wheel still zooms.
         panOnDrag={[1, 2]}
+        // Backspace or Delete removes the selected node(s) and edge(s).
+        // React Flow dispatches `remove` changes that our onNodesChange /
+        // onEdgesChange handlers already wire into the Zustand store.
+        deleteKeyCode={['Backspace', 'Delete']}
         defaultEdgeOptions={{
           type: 'default',
           markerEnd: { type: MarkerType.ArrowClosed, color: '#9C988E', width: 16, height: 16 },
