@@ -78,22 +78,29 @@ const TRAVEL: Graph = {
 
 const SUPPORT: Graph = {
   nodes: [
-    { id: 'start',    type: 'start',    position: { x: 460, y: 20 },  data: { kind: 'start', label: 'Start' } },
+    { id: 'start', type: 'start', position: { x: 460, y: 20 }, data: { kind: 'start', label: 'Start' } },
+    // Classify and the Docs-search node sit on the same row, fanning out
+    // from Start. Classify routes intent; fileSearch always loads doc
+    // context (so the technical agent has it available downstream).
     {
       id: 'classify', type: 'classify',
-      position: { x: 400, y: 140 },
+      position: { x: 260, y: 160 },
       data: { kind: 'classify', label: 'Classify intent', intents: ['refund', 'technical', 'general'] },
     },
-    // Memory and file-search are side inputs feeding into the branch agents
-    // — positioned in the same row as the agents but offset to one side.
     {
-      id: 'memory',   type: 'memory',
-      position: { x: -200, y: 340 },
+      id: 'fileSearch', type: 'fileSearch',
+      position: { x: 760, y: 160 },
+      data: { kind: 'fileSearch', label: 'Docs search', source: 'product-docs' },
+    },
+    // Memory feeds the refund branch (side input on the left).
+    {
+      id: 'memory', type: 'memory',
+      position: { x: -200, y: 360 },
       data: { kind: 'memory', label: 'Memory store', storeName: 'customer-history' },
     },
     {
       id: 'agent-refund', type: 'agent',
-      position: { x: 60, y: 340 },
+      position: { x: 60, y: 360 },
       data: {
         kind: 'agent', label: 'Refund agent',
         prompt: 'Handle refund requests. Pull past tickets from the customer history Memory store before responding.',
@@ -101,13 +108,8 @@ const SUPPORT: Graph = {
       },
     },
     {
-      id: 'fileSearch', type: 'fileSearch',
-      position: { x: 280, y: 200 },
-      data: { kind: 'fileSearch', label: 'Docs search', source: 'product-docs' },
-    },
-    {
       id: 'agent-tech', type: 'agent',
-      position: { x: 440, y: 340 },
+      position: { x: 440, y: 360 },
       data: {
         kind: 'agent', label: 'Technical agent',
         prompt: 'Resolve technical issues using product docs and known fixes.',
@@ -116,7 +118,7 @@ const SUPPORT: Graph = {
     },
     {
       id: 'agent-general', type: 'agent',
-      position: { x: 820, y: 340 },
+      position: { x: 820, y: 360 },
       data: {
         kind: 'agent', label: 'General agent',
         prompt: 'Handle general support inquiries.',
@@ -125,13 +127,14 @@ const SUPPORT: Graph = {
     },
     {
       id: 'guardrails', type: 'guardrails',
-      position: { x: 460, y: 520 },
+      position: { x: 460, y: 540 },
       data: { kind: 'guardrails', label: 'Guardrails', rules: ['no PII leakage', 'no harmful instructions'] },
     },
-    { id: 'end', type: 'end', position: { x: 500, y: 660 }, data: { kind: 'end', label: 'End' } },
+    { id: 'end', type: 'end', position: { x: 500, y: 680 }, data: { kind: 'end', label: 'End' } },
   ],
   edges: [
     { id: 'e1',  source: 'start',         target: 'classify' },
+    { id: 'e1b', source: 'start',         target: 'fileSearch' },
     { id: 'e2',  source: 'classify',      sourceHandle: 'refund',    target: 'agent-refund',  label: 'refund' },
     { id: 'e3',  source: 'classify',      sourceHandle: 'technical', target: 'agent-tech',    label: 'technical' },
     { id: 'e4',  source: 'classify',      sourceHandle: 'general',   target: 'agent-general', label: 'general' },

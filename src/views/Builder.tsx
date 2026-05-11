@@ -34,6 +34,7 @@ export function Builder() {
   const navigate = useNavigate();
 
   const setHasTested = useStore((s) => s.setHasTested);
+  const clearChat = useStore((s) => s.clearChat);
   useEffect(() => {
     const tpl = TEMPLATES[templateId] ?? TEMPLATES.blank;
     setGraph(tpl.graph);
@@ -46,7 +47,10 @@ export function Builder() {
       urlMode === 'test' || urlMode === 'deploy' ? urlMode : 'build';
     setMode(allowedMode);
     setHasTested(false);
-  }, [templateId, params, setGraph, setCurrentTemplate, setAgentName, setMode, setHasTested]);
+    // Reset chat too — otherwise messages from the previous agent leak into
+    // a new build session.
+    clearChat();
+  }, [templateId, params, setGraph, setCurrentTemplate, setAgentName, setMode, setHasTested, clearChat]);
 
   // The wizard switches the body region between Build, Test, and Deploy.
   // Deploy is its own embedded panel (not a modal) so the three-step flow
