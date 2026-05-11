@@ -119,8 +119,8 @@ const TRAVEL: TemplateTest = {
       "I'd plan this as a fan-out to three subagents — flight, hotel, itinerary — then merge. The real agent would call live booking APIs; this prototype returns a canned plan.",
     nodeSequence: ['lead', 'sub-flight', 'sub-hotel', 'sub-itinerary', 'lead'],
   },
-  contextTitle: 'Travel preferences',
-  contextSubtitle: "What the agent reads from your Memory store before planning.",
+  contextTitle: 'Travel profile · connected',
+  contextSubtitle: 'Preferences and active trips the agent reads before planning.',
   context: [
     { label: 'Seating', body: 'Window seats; aisle if not available.' },
     { label: 'Hotel style', body: 'Walkable, near transit, ≤$250/nt unless flagged.' },
@@ -188,8 +188,8 @@ const SUPPORT: TemplateTest = {
       "Happy to help. Could you share a bit more — order number, account email, or a screenshot of what you're seeing?",
     nodeSequence: ['classify', 'agent-general', 'end'],
   },
-  contextTitle: 'Customer record',
-  contextSubtitle: 'Pulled from the Memory store at the start of the session.',
+  contextTitle: 'Customer record · CRM connected',
+  contextSubtitle: 'Pulled from your CRM at the start of the session.',
   context: [
     { label: 'Customer', body: 'Eric S. · joined 2024-06 · 7 orders · 0 refunds' },
     { label: 'Recent order', body: '#4421 · $89.99 · shipped 2026-05-04 · marked delivered 2026-05-08', badge: 'Open issue', badgeTone: 'warn' },
@@ -314,8 +314,8 @@ const EMAIL: TemplateTest = {
       "I wasn't sure what you wanted, so I summarized your unread. Try `summarize`, `draft a reply to <person>`, `accept the meeting`, or `clean up spam`.",
     nodeSequence: ['triage', 'skill-summary', 'end'],
   },
-  contextTitle: 'Mock inbox · Gmail',
-  contextSubtitle: 'What the agent sees when you ask it to do inbox work.',
+  contextTitle: 'Inbox · Gmail connected',
+  contextSubtitle: 'Live thread feed the agent reads when you ask it to do inbox work.',
   context: [
     {
       label: 'Sarah Chen (CEO)',
@@ -364,7 +364,7 @@ const BLANK: TemplateTest = {
     nodeSequence: ['agent', 'agent', 'end'],
   },
   contextTitle: 'Agent context',
-  contextSubtitle: 'Nothing wired up yet.',
+  contextSubtitle: 'No data sources connected yet.',
   context: [
     { label: 'System prompt', body: 'You are a helpful assistant.' },
     { label: 'Tools', body: '— none —' },
