@@ -266,7 +266,7 @@ export function ChatSidebar() {
         {chat.length === 0 && currentTemplate && currentTemplate !== 'email' && (
           <EmptyStateChips
             template={currentTemplate}
-            onPick={(t) => setInput(t)}
+            onPick={(t) => submit(t)}
           />
         )}
       </div>
