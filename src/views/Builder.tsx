@@ -8,7 +8,6 @@ import {
   Rocket,
   Settings,
   MoreHorizontal,
-  ArrowRight,
 } from 'lucide-react';
 import { TEMPLATES } from '../data/templates';
 import { EMAIL_FINAL } from '../data/emailDemo';
@@ -322,13 +321,13 @@ function NextStepCTA({
     <button
       onClick={onClick}
       className={
-        'absolute top-4 right-4 z-20 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium transition-all animate-fade-in ' +
+        'absolute top-4 right-4 z-20 px-3.5 py-1.5 rounded-full text-sm font-medium transition-all animate-fade-in ' +
         (primary
           ? 'bg-ink text-white shadow-md hover:bg-ink/90 hover:shadow-lg hover:-translate-y-px'
           : 'bg-white border border-ink/80 text-ink shadow-sm hover:shadow-md hover:bg-canvas')
       }
     >
-      {label} <ArrowRight className="w-4 h-4" />
+      {label}
     </button>
   );
 }
