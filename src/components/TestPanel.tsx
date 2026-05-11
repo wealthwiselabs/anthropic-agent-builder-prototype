@@ -181,7 +181,7 @@ export function TestPanel() {
           <button
             type="submit"
             disabled={!input.trim()}
-            className="w-7 h-7 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center disabled:opacity-40"
+            className="w-7 h-7 rounded-full bg-coral/90 hover:bg-coral text-white flex items-center justify-center disabled:opacity-40"
             aria-label="Run"
           >
             <ArrowUp className="w-3.5 h-3.5" />
