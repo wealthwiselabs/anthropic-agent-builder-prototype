@@ -294,12 +294,15 @@ function IconButton({
 }
 
 // Floating call-to-action that nudges the reviewer to the next wizard step.
-// Sits at the bottom-center of the active body region; coral pill for prominence.
+// Sits at the top-right of the active body region, directly below the header's
+// Deploy button — same column as Anthropic's actual Publish action.
+// Outlined style (instead of solid coral/ink) so it doesn't visually compete
+// with the solid Deploy button just above it.
 function NextStepCTA({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-4 py-2 rounded-full bg-ink text-white text-sm font-medium shadow-lg hover:bg-ink/90 hover:scale-[1.02] transition-transform animate-fade-in"
+      className="absolute top-4 right-4 z-20 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white border border-ink/80 text-ink text-sm font-medium shadow-sm hover:shadow-md hover:bg-canvas transition-all animate-fade-in"
     >
       {label} <ArrowRight className="w-4 h-4" />
     </button>
