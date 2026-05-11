@@ -27,6 +27,7 @@ export function TestPanel() {
   const currentTemplate = useStore((s) => s.currentTemplate);
   const agentName = useStore((s) => s.agentName);
   const setActiveNode = useStore((s) => s.setActiveNode);
+  const setHasTested = useStore((s) => s.setHasTested);
   const [messages, setMessages] = useState<TestMessage[]>([]);
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -49,6 +50,9 @@ export function TestPanel() {
     const text = (raw ?? input).trim();
     if (!text) return;
     setInput('');
+    // Mark this session as "tested" so the "Next: Deploy" CTA can promote
+    // itself from secondary → primary styling.
+    setHasTested(true);
     const userMsg: TestMessage = {
       id: crypto.randomUUID(),
       role: 'user',

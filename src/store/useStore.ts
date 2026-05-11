@@ -45,6 +45,11 @@ type StoreState = {
   demoRunning: boolean;
   setDemoRunning: (b: boolean) => void;
 
+  // Flips true the first time the user sends a message to the agent in
+  // Test mode. Promotes the "Next: Deploy" CTA from secondary → primary.
+  hasTested: boolean;
+  setHasTested: (b: boolean) => void;
+
   // Deploy
   lastDeployTarget: DeployTarget | null;
   setLastDeployTarget: (t: DeployTarget | null) => void;
@@ -109,6 +114,9 @@ export const useStore = create<StoreState>((set) => ({
 
   demoRunning: false,
   setDemoRunning: (b) => set({ demoRunning: b }),
+
+  hasTested: false,
+  setHasTested: (b) => set({ hasTested: b }),
 
   lastDeployTarget: null,
   setLastDeployTarget: (t) => set({ lastDeployTarget: t }),

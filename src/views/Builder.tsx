@@ -37,6 +37,7 @@ export function Builder() {
   const navigate = useNavigate();
   const [deployOpen, setDeployOpen] = useState(false);
 
+  const setHasTested = useStore((s) => s.setHasTested);
   useEffect(() => {
     const tpl = TEMPLATES[templateId] ?? TEMPLATES.blank;
     setGraph(tpl.graph);
@@ -44,7 +45,8 @@ export function Builder() {
     setAgentName(tpl.name);
     // Always reset to Build when a new template loads.
     setMode('build');
-  }, [templateId, setGraph, setCurrentTemplate, setAgentName, setMode]);
+    setHasTested(false);
+  }, [templateId, setGraph, setCurrentTemplate, setAgentName, setMode, setHasTested]);
 
   // Clicking the "Deploy" wizard step opens the deploy modal.
   // It doesn't permanently switch into a 'deploy' mode panel — the modal IS the deploy step.
@@ -150,10 +152,15 @@ function BuildBody({
   onAdvance: () => void;
 }) {
   const graph = useStore((s) => s.graph);
+  const chat = useStore((s) => s.chat);
   const demoRunning = useStore((s) => s.demoRunning);
   // Show the "Next: Test" CTA once the graph has real content
   // (more than just Start + End) and the demo isn't actively building.
   const showAdvance = view === 'graph' && graph.nodes.length > 2 && !demoRunning;
+  // Promote to primary once the user (or completed demo) has actually
+  // engaged with Build: more than the initial copilot greeting in chat
+  // OR substantial graph content beyond a barebones template.
+  const primary = chat.length > 1 || graph.nodes.length > 4;
   return (
     <div className="flex-1 flex min-h-0">
       <aside className="w-[320px] shrink-0 border-r border-border bg-chrome">
@@ -161,7 +168,9 @@ function BuildBody({
       </aside>
       <div className="flex-1 min-w-0 relative bg-canvas">
         {view === 'graph' ? <Canvas /> : <CodeView onClose={onCloseCode} />}
-        {showAdvance && <NextStepCTA label="Test this agent" onClick={onAdvance} />}
+        {showAdvance && (
+          <NextStepCTA label="Next: Test" onClick={onAdvance} primary={primary} />
+        )}
       </div>
       <RightContextPanel />
     </div>
@@ -191,11 +200,12 @@ function RightContextPanel() {
 // on top of the Context panel (data sources the agent has access to).
 // To edit the graph, click "1 Build" in the wizard breadcrumb.
 function TestBody({ onAdvance }: { onAdvance: () => void }) {
+  const hasTested = useStore((s) => s.hasTested);
   return (
     <div className="flex-1 flex min-h-0">
       <div className="flex-1 min-w-0 bg-chrome relative">
         <TestPanel />
-        <NextStepCTA label="Deploy this agent" onClick={onAdvance} />
+        <NextStepCTA label="Next: Deploy" onClick={onAdvance} primary={hasTested} />
       </div>
       <aside className="w-[340px] shrink-0 border-l border-border bg-chrome flex flex-col min-h-0">
         <div className="h-[44%] min-h-[260px] border-b border-border relative bg-canvas">
@@ -295,14 +305,28 @@ function IconButton({
 
 // Floating call-to-action that nudges the reviewer to the next wizard step.
 // Sits at the top-right of the active body region, directly below the header's
-// Deploy button — same column as Anthropic's actual Publish action.
-// Outlined style (instead of solid coral/ink) so it doesn't visually compete
-// with the solid Deploy button just above it.
-function NextStepCTA({ label, onClick }: { label: string; onClick: () => void }) {
+// Deploy button. Starts in secondary (outlined white) styling and promotes to
+// primary (solid ink) once the user has taken meaningful action in the
+// current step — built something in Build mode, or sent a test prompt in
+// Test mode. The promotion is a subtle "yes, this is the next thing to do".
+function NextStepCTA({
+  label,
+  onClick,
+  primary,
+}: {
+  label: string;
+  onClick: () => void;
+  primary: boolean;
+}) {
   return (
     <button
       onClick={onClick}
-      className="absolute top-4 right-4 z-20 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white border border-ink/80 text-ink text-sm font-medium shadow-sm hover:shadow-md hover:bg-canvas transition-all animate-fade-in"
+      className={
+        'absolute top-4 right-4 z-20 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium transition-all animate-fade-in ' +
+        (primary
+          ? 'bg-ink text-white shadow-md hover:bg-ink/90 hover:shadow-lg hover:-translate-y-px'
+          : 'bg-white border border-ink/80 text-ink shadow-sm hover:shadow-md hover:bg-canvas')
+      }
     >
       {label} <ArrowRight className="w-4 h-4" />
     </button>
