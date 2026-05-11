@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ArrowUp, Sparkles, Wand2, FastForward } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { TEMPLATES } from '../data/templates';
@@ -28,38 +29,47 @@ export function ChatSidebar() {
   const graph = useStore((s) => s.graph);
   const setGraph = useStore((s) => s.setGraph);
   const currentTemplate = useStore((s) => s.currentTemplate);
+  const [params] = useSearchParams();
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Demo state.
+  // - demoRunning: true while the staged build-up is playing.
   // - demoPending: true when this Email session hasn't run the demo yet
   //   AND the graph is still in its blank-shell state.
-  // - demoRunning: true while the staged build-up is playing.
   // - timeouts: collected so Skip can cancel pending steps cleanly.
+  // - runDemoRef: lets the mount-time useEffect kick off the demo without
+  //   a forward-reference to the runDemo function defined below.
   const [demoRunning, setDemoRunning] = useState(false);
   const demoPendingRef = useRef(false);
   const timeoutsRef = useRef<number[]>([]);
-
-  const isEmailFirstLoad =
-    currentTemplate === 'email' &&
-    chat.length === 0 &&
-    graph.nodes.length <= 2; // blank shell
+  const runDemoRef = useRef<((g: Graph) => void) | null>(null);
 
   // Greet on template load if chat is empty.
+  // For Email we kick off the demo automatically — the cold-start prompt was
+  // already submitted from the landing page (`?autoplay=1`).
   useEffect(() => {
-    if (chat.length === 0 && currentTemplate) {
-      if (currentTemplate === 'email') {
-        // Email lands in cold-start demo mode: pre-fill the prompt and
-        // arm `demoPending` so the next send runs the build-up.
+    if (chat.length !== 0 || !currentTemplate) return;
+    if (currentTemplate === 'email') {
+      const autoplay = params.get('autoplay') === '1';
+      const urlPrompt = params.get('prompt') || EMAIL_DEMO_PROMPT;
+      if (autoplay) {
+        // Auto-fire: push the user message immediately and start the demo.
+        pushChat({ role: 'user', text: urlPrompt });
+        demoPendingRef.current = false;
+        runDemoRef.current?.(useStore.getState().graph);
+      } else {
+        // Manual landing on /builder?template=email (no autoplay): show the
+        // pre-fill prompt UX so the reviewer can opt in.
         demoPendingRef.current = true;
         setInput(EMAIL_DEMO_PROMPT);
         pushChat({
           role: 'copilot',
           text: "Watch me build an email assistant from scratch. I've pre-filled a prompt — hit send and I'll wire it up step by step. You can skip ahead at any point.",
         });
-      } else {
-        pushChat({ role: 'copilot', text: greetingFor(currentTemplate) });
       }
+    } else {
+      pushChat({ role: 'copilot', text: greetingFor(currentTemplate) });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTemplate]);
@@ -87,6 +97,8 @@ export function ChatSidebar() {
 
   // Walk through the demo steps sequentially. Each step reuses the same
   // thinking → reply → staged graph mutation pipeline as the normal chat.
+  // Stored on a ref so the mount-time useEffect can call it without a
+  // forward-reference.
   const runDemo = (initialGraph: Graph) => {
     setDemoRunning(true);
     let acc = initialGraph;
@@ -136,6 +148,8 @@ export function ChatSidebar() {
       }
     });
   };
+  // Expose the latest runDemo via the ref so the mount-time effect can call it.
+  runDemoRef.current = runDemo;
 
   const skipDemo = () => {
     timeoutsRef.current.forEach((t) => clearTimeout(t));
@@ -227,7 +241,7 @@ export function ChatSidebar() {
             thinking={m.thinking}
           />
         ))}
-        {!isEmailFirstLoad && chat.length <= 1 && (
+        {chat.length <= 1 && currentTemplate !== 'email' && (
           <SuggestionChips onPick={submit} />
         )}
       </div>

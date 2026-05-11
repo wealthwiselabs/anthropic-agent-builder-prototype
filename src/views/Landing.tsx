@@ -1,19 +1,27 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowUp, FileSearch, MessagesSquare, Mail, Plane, Headphones } from 'lucide-react';
+import { ArrowUp, FileSearch, MessagesSquare, Plane, Headphones } from 'lucide-react';
 import { TEMPLATES, routePromptToTemplate } from '../data/templates';
+import { EMAIL_DEMO_PROMPT } from '../data/emailDemo';
 import type { TemplateId } from '../types';
 
 // Landing: chat input on the left, template grid on the right.
 // Mirrors the "Quickstart — What do you want to build?" layout from the real Console.
+//
+// The chat input is pre-filled with the Email-assistant demo prompt — clicking
+// send is the cold-start of the whole prototype. The Email template was removed
+// from the grid since the demo IS the canonical email path.
 export function Landing() {
-  const [prompt, setPrompt] = useState('');
+  const [prompt, setPrompt] = useState(EMAIL_DEMO_PROMPT);
   const navigate = useNavigate();
 
   const submit = () => {
     if (!prompt.trim()) return;
     const id = routePromptToTemplate(prompt);
-    navigate(`/builder?template=${id}&prompt=${encodeURIComponent(prompt)}`);
+    // For email we add `autoplay=1` so the ChatSidebar skips the
+    // "press send" gate and runs the build animation immediately.
+    const autoplay = id === 'email' ? '&autoplay=1' : '';
+    navigate(`/builder?template=${id}&prompt=${encodeURIComponent(prompt)}${autoplay}`);
   };
 
   const goTemplate = (id: TemplateId) => navigate(`/builder?template=${id}`);
@@ -29,29 +37,34 @@ export function Landing() {
           <p className="text-muted mb-8">
             Describe your agent or start with a template.
           </p>
-          <div className="w-full max-w-[440px]">
-            <div className="flex items-center gap-2 px-4 py-3 bg-white border border-border rounded-2xl shadow-sm">
-              <input
-                className="flex-1 outline-none text-ink placeholder:text-muted/80 bg-transparent"
+          <div className="w-full max-w-[480px]">
+            <div className="flex items-start gap-2 px-4 py-3 bg-white border border-border rounded-2xl shadow-sm">
+              <textarea
+                rows={3}
+                className="flex-1 outline-none text-ink placeholder:text-muted/80 bg-transparent resize-none"
                 placeholder="Describe your agent…"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') submit();
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    submit();
+                  }
                 }}
               />
               <button
                 onClick={submit}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-coral/90 hover:bg-coral text-white disabled:opacity-40"
+                className="mt-0.5 w-8 h-8 flex items-center justify-center rounded-full bg-coral/90 hover:bg-coral text-white disabled:opacity-40 shrink-0"
                 disabled={!prompt.trim()}
                 aria-label="Submit prompt"
               >
                 <ArrowUp className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-[11px] text-muted mt-2">
-              Try: <ExamplePill onClick={() => setPrompt('Plan a 5-day trip to Tokyo')}>Plan a 5-day trip to Tokyo</ExamplePill>{' '}
-              <ExamplePill onClick={() => setPrompt('Build a customer support bot')}>Build a customer support bot</ExamplePill>
+            <p className="text-[11px] text-muted mt-2 text-left">
+              ✨ Pre-filled — hit send to watch the AI build it from scratch. Or try:{' '}
+              <ExamplePill onClick={() => setPrompt('Plan a 5-day trip to Tokyo')}>Plan a trip</ExamplePill>{' '}
+              <ExamplePill onClick={() => setPrompt('Build a customer support bot')}>Support bot</ExamplePill>
             </p>
           </div>
         </div>
@@ -81,13 +94,6 @@ export function Landing() {
               description={TEMPLATES.support.description}
               accent="Memory stores · File search"
               onClick={() => goTemplate('support')}
-            />
-            <TemplateCard
-              icon={<Mail className="w-4 h-4" />}
-              name={TEMPLATES.email.name}
-              description={TEMPLATES.email.description}
-              accent="Skills · User approval"
-              onClick={() => goTemplate('email')}
             />
             <TemplateCard
               icon={<FileSearch className="w-4 h-4" />}
