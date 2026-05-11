@@ -32,7 +32,7 @@ export function ConsoleChrome({ children }: { children: ReactNode }) {
 function PlaceholderTopBar() {
   return (
     <header className="h-12 flex items-center px-6 border-b border-border bg-chrome">
-      <span className="font-serif text-[15px] text-ink">Unified agent builder</span>
+      <span className="font-serif text-[15px] text-ink">Unified Agent Builder</span>
     </header>
   );
 }
