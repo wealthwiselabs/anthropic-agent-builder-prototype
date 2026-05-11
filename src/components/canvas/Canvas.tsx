@@ -205,6 +205,11 @@ function CanvasInner() {
         // so the pan gesture can never hijack a connection drag started
         // just outside a handle. Scroll-wheel still zooms.
         panOnDrag={[1, 2]}
+        // Two-finger trackpad swipe pans the canvas. Ctrl/Cmd + wheel still
+        // zooms (React Flow's built-in modifier convention). Pinch-to-zoom
+        // on the trackpad continues to work.
+        panOnScroll
+        zoomOnScroll={false}
         // Backspace or Delete removes the selected node(s) and edge(s).
         // React Flow dispatches `remove` changes that our onNodesChange /
         // onEdgesChange handlers already wire into the Zustand store.
@@ -216,7 +221,7 @@ function CanvasInner() {
         }}
       >
         <Background gap={16} size={1} color="#E8E5DD" />
-        <Controls position="bottom-center" showInteractive={false} />
+        <Controls position="bottom-right" showInteractive={false} />
       </ReactFlow>
     </div>
   );
