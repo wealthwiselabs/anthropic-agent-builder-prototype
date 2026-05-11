@@ -26,23 +26,13 @@ export function ConsoleChrome({ children }: { children: ReactNode }) {
   );
 }
 
-// Generic placeholder for non-builder, non-deploy pages (currently just the
-// landing route).
+// Minimal header for the landing route: just the product title. The
+// 1-2-3-4 step indicators that used to sit here were meaningless before
+// the reviewer had even entered the builder.
 function PlaceholderTopBar() {
   return (
     <header className="h-12 flex items-center px-6 border-b border-border bg-chrome">
-      <span className="text-sm text-muted">Quickstart</span>
-      <div className="flex-1" />
-      <div className="flex items-center gap-1 text-sm">
-        <PlaceholderStep n={1} active />
-        <Sep />
-        <PlaceholderStep n={2} />
-        <Sep />
-        <PlaceholderStep n={3} />
-        <Sep />
-        <PlaceholderStep n={4} />
-      </div>
-      <div className="flex-1" />
+      <span className="font-serif text-[15px] text-ink">Unified agent builder</span>
     </header>
   );
 }
@@ -66,21 +56,3 @@ function WizardTopBar() {
   );
 }
 
-function PlaceholderStep({ n, active }: { n: number; active?: boolean }) {
-  return (
-    <span
-      className={
-        'inline-flex items-center justify-center w-6 h-6 rounded-full border text-xs ' +
-        (active
-          ? 'border-ink text-ink bg-white'
-          : 'border-border text-muted bg-transparent')
-      }
-    >
-      {n}
-    </span>
-  );
-}
-
-function Sep() {
-  return <span className="w-6 h-px bg-border mx-1" />;
-}
