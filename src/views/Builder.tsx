@@ -3,9 +3,6 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import {
   ChevronLeft,
   Code2,
-  Wrench,
-  PlayCircle,
-  Rocket,
   Settings,
   MoreHorizontal,
 } from 'lucide-react';
@@ -20,6 +17,7 @@ import { ChatSidebar } from '../components/ChatSidebar';
 import { TestPanel } from '../components/TestPanel';
 import { ContextPanel } from '../components/ContextPanel';
 import { CodeView } from '../components/CodeView';
+import { WizardSteps, type WizardMode } from '../components/WizardSteps';
 import clsx from 'clsx';
 
 export function Builder() {
@@ -41,10 +39,14 @@ export function Builder() {
     setGraph(tpl.graph);
     setCurrentTemplate(templateId);
     setAgentName(tpl.name);
-    // Always reset to Build when a new template loads.
-    setMode('build');
+    // Default to Build, but allow the URL to pin to Test or Deploy so the
+    // deploy-success pages can deep-link the user back to the right step.
+    const urlMode = (params.get('mode') as WizardMode) || 'build';
+    const allowedMode: WizardMode =
+      urlMode === 'test' || urlMode === 'deploy' ? urlMode : 'build';
+    setMode(allowedMode);
     setHasTested(false);
-  }, [templateId, setGraph, setCurrentTemplate, setAgentName, setMode, setHasTested]);
+  }, [templateId, params, setGraph, setCurrentTemplate, setAgentName, setMode, setHasTested]);
 
   // The wizard switches the body region between Build, Test, and Deploy.
   // Deploy is its own embedded panel (not a modal) so the three-step flow
@@ -213,70 +215,6 @@ function TestBody({ onAdvance }: { onAdvance: () => void }) {
       </aside>
     </div>
   );
-}
-
-// ---- Wizard breadcrumb ----
-
-function WizardSteps({
-  current,
-  onChange,
-}: {
-  current: 'build' | 'test' | 'deploy';
-  onChange: (next: 'build' | 'test' | 'deploy') => void;
-}) {
-  return (
-    <div className="inline-flex items-center bg-white border border-border rounded-full p-0.5">
-      <Step n={1} icon={<Wrench className="w-3 h-3" />} label="Build"
-        active={current === 'build'} onClick={() => onChange('build')} />
-      <Sep />
-      <Step n={2} icon={<PlayCircle className="w-3 h-3" />} label="Test"
-        active={current === 'test'} onClick={() => onChange('test')} />
-      <Sep />
-      <Step n={3} icon={<Rocket className="w-3 h-3" />} label="Deploy"
-        active={current === 'deploy'} onClick={() => onChange('deploy')} />
-    </div>
-  );
-}
-
-function Step({
-  n,
-  icon,
-  label,
-  active,
-  onClick,
-}: {
-  n: number;
-  icon: React.ReactNode;
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={clsx(
-        'flex items-center gap-1.5 px-3 py-1 rounded-full text-xs transition-colors',
-        active
-          ? 'bg-canvas text-ink'
-          : 'text-muted hover:text-ink'
-      )}
-    >
-      <span
-        className={clsx(
-          'inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-medium',
-          active ? 'bg-ink text-white' : 'bg-border/60 text-muted'
-        )}
-      >
-        {n}
-      </span>
-      {icon}
-      {label}
-    </button>
-  );
-}
-
-function Sep() {
-  return <span className="w-3 h-px bg-border mx-0.5" />;
 }
 
 function IconButton({

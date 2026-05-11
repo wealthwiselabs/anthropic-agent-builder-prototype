@@ -31,13 +31,13 @@ export function DeployManagedSuccess() {
         <CopyRow label="Endpoint" value={endpoint} mono />
 
         <div className="mt-6 flex items-center gap-3">
-          <button
-            disabled
-            title="Mocked in this prototype"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-ink/10 text-muted/70 text-sm cursor-not-allowed"
+          <Link
+            to="/"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-ink text-white text-sm hover:bg-ink/90"
+            title="Mocked — would open the Managed Agents dashboard. Returns to landing in the prototype."
           >
             <ExternalLink className="w-4 h-4" /> Open in Managed Agents
-          </button>
+          </Link>
           <Link to="/builder" className="text-sm text-coral hover:underline">
             ← Back to builder
           </Link>
