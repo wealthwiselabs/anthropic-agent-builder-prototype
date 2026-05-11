@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import {
   ChevronLeft,
@@ -34,7 +34,6 @@ export function Builder() {
   const mode = useStore((s) => s.mode);
   const setMode = useStore((s) => s.setMode);
   const navigate = useNavigate();
-  const [deployOpen, setDeployOpen] = useState(false);
 
   const setHasTested = useStore((s) => s.setHasTested);
   useEffect(() => {
@@ -47,18 +46,14 @@ export function Builder() {
     setHasTested(false);
   }, [templateId, setGraph, setCurrentTemplate, setAgentName, setMode, setHasTested]);
 
-  // Clicking the "Deploy" wizard step opens the deploy modal.
-  // It doesn't permanently switch into a 'deploy' mode panel — the modal IS the deploy step.
+  // The wizard switches the body region between Build, Test, and Deploy.
+  // Deploy is its own embedded panel (not a modal) so the three-step flow
+  // reads as a real journey, not a side-trip.
   const onWizardChange = (next: 'build' | 'test' | 'deploy') => {
-    if (next === 'deploy') {
-      setDeployOpen(true);
-      return;
-    }
-    // If the reviewer jumps to Test while the Email graph is still in its
-    // blank demo-shell state, fast-forward to the finished graph so Test
-    // responses have real nodes to reference and highlight.
+    // If the reviewer jumps past Build on the Email cold-start, fast-forward
+    // to the finished graph so Test/Deploy have real content to operate on.
     if (
-      next === 'test' &&
+      (next === 'test' || next === 'deploy') &&
       templateId === 'email' &&
       useStore.getState().graph.nodes.length <= 2
     ) {
@@ -104,33 +99,32 @@ export function Builder() {
               <Code2 className="w-4 h-4" /> Code
             </button>
           )}
-          <button
-            onClick={() => setDeployOpen(true)}
-            className="ml-1 px-3.5 py-1.5 rounded-full bg-ink text-white text-sm font-medium hover:bg-ink/90"
-          >
-            Deploy
-          </button>
+          {mode !== 'deploy' && (
+            <button
+              onClick={() => onWizardChange('deploy')}
+              className="ml-1 px-3.5 py-1.5 rounded-full bg-ink text-white text-sm font-medium hover:bg-ink/90"
+            >
+              Deploy
+            </button>
+          )}
         </div>
       </header>
 
       {/* Body switches based on wizard mode. */}
-      {mode === 'build' ? (
+      {mode === 'build' && (
         <BuildBody
           view={view}
           onCloseCode={() => setView('graph')}
           onAdvance={() => onWizardChange('test')}
         />
-      ) : (
+      )}
+      {mode === 'test' && (
         <TestBody onAdvance={() => onWizardChange('deploy')} />
       )}
-
-      {deployOpen && (
-        <DeployModal
-          onClose={() => setDeployOpen(false)}
-          onPick={(target) => {
-            setDeployOpen(false);
-            navigate(`/deploy/${target}`);
-          }}
+      {mode === 'deploy' && (
+        <DeployBody
+          onPick={(target) => navigate(`/deploy/${target}`)}
+          onBack={() => onWizardChange('test')}
         />
       )}
     </div>
@@ -239,7 +233,7 @@ function WizardSteps({
         active={current === 'test'} onClick={() => onChange('test')} />
       <Sep />
       <Step n={3} icon={<Rocket className="w-3 h-3" />} label="Deploy"
-        active={false} onClick={() => onChange('deploy')} />
+        active={current === 'deploy'} onClick={() => onChange('deploy')} />
     </div>
   );
 }
@@ -332,53 +326,67 @@ function NextStepCTA({
   );
 }
 
-// ---- Deploy modal (unchanged from before) ----
-
-function DeployModal({
-  onClose,
+// ---- Deploy mode ----
+//
+// Step 3 of the wizard: a full embedded panel with the three deploy targets
+// as cards (no modal). Picking a target navigates to the corresponding
+// success route which renders inside the Console chrome.
+function DeployBody({
   onPick,
+  onBack,
 }: {
-  onClose: () => void;
   onPick: (target: 'managed' | 'github' | 'download') => void;
+  onBack: () => void;
 }) {
+  const agentName = useStore((s) => s.agentName);
+  const graph = useStore((s) => s.graph);
   return (
-    <div
-      className="fixed inset-0 z-50 bg-ink/40 flex items-center justify-center p-6"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-7"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="font-serif text-xl mb-1">Deploy this agent</h2>
-        <p className="text-sm text-muted mb-5">
-          Same agent, same build. Pick where it runs.
+    <div className="flex-1 overflow-y-auto bg-canvas">
+      <div className="max-w-4xl mx-auto px-10 py-12">
+        <div className="text-[11px] uppercase tracking-wide text-coral mb-2">
+          Step 3 · Deploy
+        </div>
+        <h1 className="font-serif text-3xl text-ink mb-2">
+          Where should <span className="italic">{agentName}</span> run?
+        </h1>
+        <p className="text-muted mb-8 max-w-xl">
+          Same agent, same build. Pick a target — managed runtime,
+          your own repo, or a downloadable zip you can run locally.
         </p>
-        <div className="grid grid-cols-3 gap-3">
+
+        <div className="grid grid-cols-3 gap-4 mb-6">
           <DeployCard
             title="Managed Agent"
-            body="Run on Anthropic's managed runtime. Get an agent ID + endpoint."
+            body="Run on Anthropic's managed runtime. Get an agent ID and an HTTPS endpoint you can call from anywhere."
+            cta="Deploy as managed"
             onClick={() => onPick('managed')}
           />
           <DeployCard
             title="Sync to GitHub"
-            body="Create a repo with the generated code and push the first commit."
+            body="Create a repo with the generated code and push the first commit. Future changes deploy via your CI."
+            cta="Push to GitHub"
             onClick={() => onPick('github')}
           />
           <DeployCard
             title="Download code"
-            body="Get a zip with agent.py, README, requirements, and .env.example."
+            body="Get a zip with agent.py, README, requirements.txt, and .env.example — run locally with your own infra."
+            cta="Download .zip"
             onClick={() => onPick('download')}
           />
         </div>
-        <div className="flex justify-end mt-5">
-          <button
-            onClick={onClose}
-            className="text-sm text-muted hover:text-ink px-2 py-1"
-          >
-            Cancel
-          </button>
+
+        <div className="bg-white border border-border rounded-lg p-4 mb-6 text-[12px] text-muted">
+          <span className="text-ink">Graph summary:</span>{' '}
+          {graph.nodes.length} nodes · {graph.edges.length} edges. Switch back
+          to Build to adjust before deploying.
         </div>
+
+        <button
+          onClick={onBack}
+          className="text-sm text-muted hover:text-ink"
+        >
+          ← Back to Test
+        </button>
       </div>
     </div>
   );
@@ -387,19 +395,26 @@ function DeployModal({
 function DeployCard({
   title,
   body,
+  cta,
   onClick,
 }: {
   title: string;
   body: string;
+  cta: string;
   onClick: () => void;
 }) {
   return (
     <button
       onClick={onClick}
-      className="text-left p-4 border border-border rounded-lg hover:border-ink/30 hover:shadow-sm transition-all bg-white"
+      className="text-left p-5 border border-border rounded-xl hover:border-ink/30 hover:shadow-md transition-all bg-white flex flex-col gap-3 min-h-[200px]"
     >
-      <div className="font-medium text-ink mb-1">{title}</div>
-      <div className="text-[12px] text-muted leading-snug">{body}</div>
+      <div>
+        <div className="font-medium text-ink mb-1.5">{title}</div>
+        <div className="text-[12px] text-muted leading-snug">{body}</div>
+      </div>
+      <div className="mt-auto inline-flex items-center self-start text-[12px] text-coral font-medium">
+        {cta} →
+      </div>
     </button>
   );
 }
