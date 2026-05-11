@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ReactFlow,
   Background,
@@ -42,6 +42,10 @@ function CanvasInner() {
   const addNode = useStore((s) => s.addNode);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const { screenToFlowPosition } = useReactFlow();
+  // Local edge selection — we don't persist this to the graph itself, but
+  // React Flow needs to know which edge is "selected" so Backspace/Delete
+  // can dispatch a remove change against it.
+  const [selectedEdgeIds, setSelectedEdgeIds] = useState<Set<string>>(new Set());
 
   const nodes: Node[] = useMemo(
     () =>
@@ -69,9 +73,12 @@ function CanvasInner() {
         animated: e.animated,
         type: 'default',
         markerEnd: { type: MarkerType.ArrowClosed, color: '#9C988E', width: 16, height: 16 },
-        style: { stroke: '#B8B3A8', strokeWidth: 1.5 },
+        style: selectedEdgeIds.has(e.id)
+          ? { stroke: '#D97757', strokeWidth: 2.5 }
+          : { stroke: '#B8B3A8', strokeWidth: 1.5 },
+        selected: selectedEdgeIds.has(e.id),
       })),
-    [graph.edges]
+    [graph.edges, selectedEdgeIds]
   );
 
   const onNodesChange = useCallback(
@@ -112,9 +119,25 @@ function CanvasInner() {
 
   const onEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
-      // Only persist removals; position/animated changes don't apply to edges in our model.
+      // Persist removals to the graph. Track selection locally — React Flow
+      // needs to know edges are selected so Delete/Backspace dispatches a
+      // remove change against them and the selected style applies.
+      const toRemove: string[] = [];
+      const selectionUpdates: { id: string; selected: boolean }[] = [];
       for (const c of changes) {
-        if (c.type === 'remove') removeEdge(c.id);
+        if (c.type === 'remove') toRemove.push(c.id);
+        else if (c.type === 'select') selectionUpdates.push({ id: c.id, selected: c.selected });
+      }
+      for (const id of toRemove) removeEdge(id);
+      if (selectionUpdates.length > 0) {
+        setSelectedEdgeIds((prev) => {
+          const next = new Set(prev);
+          for (const { id, selected } of selectionUpdates) {
+            if (selected) next.add(id);
+            else next.delete(id);
+          }
+          return next;
+        });
       }
     },
     [removeEdge]
