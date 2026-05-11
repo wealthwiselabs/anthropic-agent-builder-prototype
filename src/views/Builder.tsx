@@ -8,6 +8,7 @@ import {
   Rocket,
   Settings,
   MoreHorizontal,
+  ArrowRight,
 } from 'lucide-react';
 import { TEMPLATES } from '../data/templates';
 import { EMAIL_FINAL } from '../data/emailDemo';
@@ -113,9 +114,13 @@ export function Builder() {
 
       {/* Body switches based on wizard mode. */}
       {mode === 'build' ? (
-        <BuildBody view={view} onCloseCode={() => setView('graph')} />
+        <BuildBody
+          view={view}
+          onCloseCode={() => setView('graph')}
+          onAdvance={() => onWizardChange('test')}
+        />
       ) : (
-        <TestBody />
+        <TestBody onAdvance={() => onWizardChange('deploy')} />
       )}
 
       {deployOpen && (
@@ -138,10 +143,17 @@ export function Builder() {
 function BuildBody({
   view,
   onCloseCode,
+  onAdvance,
 }: {
   view: 'graph' | 'code';
   onCloseCode: () => void;
+  onAdvance: () => void;
 }) {
+  const graph = useStore((s) => s.graph);
+  const demoRunning = useStore((s) => s.demoRunning);
+  // Show the "Next: Test" CTA once the graph has real content
+  // (more than just Start + End) and the demo isn't actively building.
+  const showAdvance = view === 'graph' && graph.nodes.length > 2 && !demoRunning;
   return (
     <div className="flex-1 flex min-h-0">
       <aside className="w-[320px] shrink-0 border-r border-border bg-chrome">
@@ -149,6 +161,7 @@ function BuildBody({
       </aside>
       <div className="flex-1 min-w-0 relative bg-canvas">
         {view === 'graph' ? <Canvas /> : <CodeView onClose={onCloseCode} />}
+        {showAdvance && <NextStepCTA label="Test this agent" onClick={onAdvance} />}
       </div>
       <RightContextPanel />
     </div>
@@ -177,11 +190,12 @@ function RightContextPanel() {
 // read-only graph preview (active node pulses as the agent "executes")
 // on top of the Context panel (data sources the agent has access to).
 // To edit the graph, click "1 Build" in the wizard breadcrumb.
-function TestBody() {
+function TestBody({ onAdvance }: { onAdvance: () => void }) {
   return (
     <div className="flex-1 flex min-h-0">
-      <div className="flex-1 min-w-0 bg-chrome">
+      <div className="flex-1 min-w-0 bg-chrome relative">
         <TestPanel />
+        <NextStepCTA label="Deploy this agent" onClick={onAdvance} />
       </div>
       <aside className="w-[340px] shrink-0 border-l border-border bg-chrome flex flex-col min-h-0">
         <div className="h-[44%] min-h-[260px] border-b border-border relative bg-canvas">
@@ -275,6 +289,19 @@ function IconButton({
       className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-canvas text-muted"
     >
       {children}
+    </button>
+  );
+}
+
+// Floating call-to-action that nudges the reviewer to the next wizard step.
+// Sits at the bottom-center of the active body region; coral pill for prominence.
+function NextStepCTA({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-4 py-2 rounded-full bg-ink text-white text-sm font-medium shadow-lg hover:bg-ink/90 hover:scale-[1.02] transition-transform animate-fade-in"
+    >
+      {label} <ArrowRight className="w-4 h-4" />
     </button>
   );
 }

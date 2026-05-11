@@ -40,6 +40,11 @@ type StoreState = {
   mode: 'build' | 'test' | 'deploy';
   setMode: (m: 'build' | 'test' | 'deploy') => void;
 
+  // True while the cold-start Email build animation is running. Used to
+  // hide the "Next: Test" CTA until the demo finishes.
+  demoRunning: boolean;
+  setDemoRunning: (b: boolean) => void;
+
   // Deploy
   lastDeployTarget: DeployTarget | null;
   setLastDeployTarget: (t: DeployTarget | null) => void;
@@ -101,6 +106,9 @@ export const useStore = create<StoreState>((set) => ({
 
   mode: 'build',
   setMode: (m) => set({ mode: m }),
+
+  demoRunning: false,
+  setDemoRunning: (b) => set({ demoRunning: b }),
 
   lastDeployTarget: null,
   setLastDeployTarget: (t) => set({ lastDeployTarget: t }),

@@ -29,18 +29,20 @@ export function ChatSidebar() {
   const graph = useStore((s) => s.graph);
   const setGraph = useStore((s) => s.setGraph);
   const currentTemplate = useStore((s) => s.currentTemplate);
+  const demoRunning = useStore((s) => s.demoRunning);
+  const setDemoRunning = useStore((s) => s.setDemoRunning);
   const [params] = useSearchParams();
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Demo state.
-  // - demoRunning: true while the staged build-up is playing.
+  // - demoRunning (in store): true while the staged build-up is playing.
+  //   Lifted to the store so the Builder's "Next: Test" CTA can hide.
   // - demoPending: true when this Email session hasn't run the demo yet
   //   AND the graph is still in its blank-shell state.
   // - timeouts: collected so Skip can cancel pending steps cleanly.
   // - runDemoRef: lets the mount-time useEffect kick off the demo without
   //   a forward-reference to the runDemo function defined below.
-  const [demoRunning, setDemoRunning] = useState(false);
   const demoPendingRef = useRef(false);
   const timeoutsRef = useRef<number[]>([]);
   const runDemoRef = useRef<((g: Graph) => void) | null>(null);
