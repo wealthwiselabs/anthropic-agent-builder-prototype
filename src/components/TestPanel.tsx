@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUp, Bot, ChevronDown, ChevronUp, Sparkles, User, Play } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { useStore } from '../store/useStore';
 import { TEMPLATE_TESTS, pickTestResponse, type TestResponse } from '../data/testResponses';
 import clsx from 'clsx';
@@ -282,15 +283,16 @@ function AgentBubble({
           )}
         </div>
 
-        {/* Reply */}
+        {/* Reply — rendered as markdown so bold/lists/blockquotes show
+            as rich text instead of literal characters. */}
         {msg.stage === 'done' && (
           <div
             className={clsx(
-              'bg-white border border-border rounded-2xl rounded-tl-sm px-3.5 py-2.5 text-sm leading-relaxed text-ink whitespace-pre-wrap',
-              'animate-fade-in'
+              'bg-white border border-border rounded-2xl rounded-tl-sm px-3.5 py-2.5 text-sm leading-relaxed text-ink',
+              'animate-fade-in agent-markdown'
             )}
           >
-            {msg.reply}
+            <ReactMarkdown>{msg.reply}</ReactMarkdown>
           </div>
         )}
       </div>

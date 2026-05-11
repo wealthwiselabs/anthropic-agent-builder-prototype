@@ -11,33 +11,72 @@ export type Mutation = (graph: Graph) => MutationResult | null;
 
 const id = (prefix = 'n') => `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
 
+// ---- Layout helpers ----
+//
+// When a mutation inserts a node into an existing flow, downstream nodes
+// often need to shift down so the new node has somewhere to land without
+// overlapping. These helpers compute that.
+
+/** Every node reachable from `nodeId` via outgoing edges, inclusive. */
+function descendantsInclusive(graph: Graph, nodeId: string): Set<string> {
+  const set = new Set<string>([nodeId]);
+  const queue: string[] = [nodeId];
+  while (queue.length) {
+    const cur = queue.shift()!;
+    for (const e of graph.edges) {
+      if (e.source === cur && !set.has(e.target)) {
+        set.add(e.target);
+        queue.push(e.target);
+      }
+    }
+  }
+  return set;
+}
+
+/** Returns a graph where every node in `ids` has its y shifted by `deltaY`. */
+function shiftNodes(graph: Graph, ids: Set<string>, deltaY: number): Graph {
+  if (deltaY === 0 || ids.size === 0) return graph;
+  return {
+    ...graph,
+    nodes: graph.nodes.map((n) =>
+      ids.has(n.id)
+        ? { ...n, position: { x: n.position.x, y: n.position.y + deltaY } }
+        : n
+    ),
+  };
+}
+
 // ---- mutation builders ----
 
 const insertGuardrails: Mutation = (graph) => {
-  // Insert a Guardrails node above the first Agent node, redirecting incoming edges.
+  // Insert Guardrails ABOVE the first Agent. Push the agent + its
+  // downstream subgraph down to make room.
   const agent = graph.nodes.find((n) => n.type === 'agent');
   if (!agent) return null;
+
+  const ROW = 160;
+  const shiftSet = descendantsInclusive(graph, agent.id);
+  const shifted = shiftNodes(graph, shiftSet, ROW);
+
   const guardId = id('guardrails');
-  const incoming = graph.edges.filter((e) => e.target === agent.id);
+  // Guardrails takes the agent's *original* row.
   const newNode: GraphNode = {
     id: guardId,
     type: 'guardrails',
-    position: { x: agent.position.x + 20, y: agent.position.y - 120 },
+    position: { x: agent.position.x + 20, y: agent.position.y },
     data: {
       kind: 'guardrails',
       label: 'Guardrails',
       rules: ['no PII leakage', 'no harmful instructions'],
     },
   };
-  const rerouted: GraphEdge[] = incoming.map((e) => ({
-    ...e,
-    target: guardId,
-  }));
+  const incoming = shifted.edges.filter((e) => e.target === agent.id);
+  const rerouted: GraphEdge[] = incoming.map((e) => ({ ...e, target: guardId }));
   const bridge: GraphEdge = { id: id('e'), source: guardId, target: agent.id };
-  const others = graph.edges.filter((e) => !incoming.find((i) => i.id === e.id));
+  const others = shifted.edges.filter((e) => !incoming.find((i) => i.id === e.id));
   return {
     graph: {
-      nodes: [...graph.nodes, newNode],
+      nodes: [...shifted.nodes, newNode],
       edges: [...others, ...rerouted, bridge],
     },
     eventLabel: `Inserted Guardrails before ${agent.data.label}`,
@@ -63,17 +102,21 @@ const setModelOnAllAgents = (model: ModelId): Mutation => (graph) => {
 const escalateOnLowConfidence: Mutation = (graph) => {
   const agent = graph.nodes.find((n) => n.type === 'agent');
   if (!agent) return null;
+
+  // Push everything strictly downstream of the agent two rows down so we
+  // can wedge in an If/else and a Human-review Approval just below it.
+  const SHIFT = 360;
+  const shiftSet = descendantsInclusive(graph, agent.id);
+  shiftSet.delete(agent.id);
+  const shifted = shiftNodes(graph, shiftSet, SHIFT);
+
   const ifId = id('ifelse');
   const apvId = id('approval');
   const newIfElse: GraphNode = {
     id: ifId,
     type: 'ifelse',
-    position: { x: agent.position.x + 20, y: agent.position.y + 200 },
-    data: {
-      kind: 'ifelse',
-      label: 'Confidence ≥ 0.7?',
-      branches: ['yes', 'no'],
-    },
+    position: { x: agent.position.x + 20, y: agent.position.y + 180 },
+    data: { kind: 'ifelse', label: 'Confidence ≥ 0.7?', branches: ['yes', 'no'] },
   };
   const newApproval: GraphNode = {
     id: apvId,
@@ -83,9 +126,9 @@ const escalateOnLowConfidence: Mutation = (graph) => {
   };
   return {
     graph: {
-      nodes: [...graph.nodes, newIfElse, newApproval],
+      nodes: [...shifted.nodes, newIfElse, newApproval],
       edges: [
-        ...graph.edges,
+        ...shifted.edges,
         { id: id('e'), source: agent.id, target: ifId },
         { id: id('e'), source: ifId, target: apvId, sourceHandle: 'no', label: 'no' },
       ],
@@ -162,42 +205,42 @@ const addWebSearch: Mutation = (graph) => {
 };
 
 const parallelize: Mutation = (graph) => {
-  // If there's already a multi-agent setup, no-op gracefully.
   if (graph.nodes.filter((n) => n.type === 'subagent').length > 0) {
     return { graph, eventLabel: 'Multi-agent setup already in place' };
   }
   const agent = graph.nodes.find((n) => n.type === 'agent');
   if (!agent) return null;
+
+  // Push the agent's downstream subgraph down to fit the subagent row.
+  const SHIFT = 220;
+  const shiftSet = descendantsInclusive(graph, agent.id);
+  shiftSet.delete(agent.id);
+  const shifted = shiftNodes(graph, shiftSet, SHIFT);
+
   // Two specialists fan out below and to either side of the lead agent.
   const subA: GraphNode = {
     id: id('sub'),
     type: 'subagent',
-    position: { x: agent.position.x - 180, y: agent.position.y + 200 },
+    position: { x: agent.position.x - 200, y: agent.position.y + 180 },
     data: {
-      kind: 'subagent',
-      label: 'Specialist A',
-      prompt: 'Handle subtask A.',
-      model: 'claude-sonnet-4-6',
-      tools: [],
+      kind: 'subagent', label: 'Specialist A',
+      prompt: 'Handle subtask A.', model: 'claude-sonnet-4-6', tools: [],
     },
   };
   const subB: GraphNode = {
     id: id('sub'),
     type: 'subagent',
-    position: { x: agent.position.x + 180, y: agent.position.y + 200 },
+    position: { x: agent.position.x + 200, y: agent.position.y + 180 },
     data: {
-      kind: 'subagent',
-      label: 'Specialist B',
-      prompt: 'Handle subtask B.',
-      model: 'claude-sonnet-4-6',
-      tools: [],
+      kind: 'subagent', label: 'Specialist B',
+      prompt: 'Handle subtask B.', model: 'claude-sonnet-4-6', tools: [],
     },
   };
   return {
     graph: {
-      nodes: [...graph.nodes, subA, subB],
+      nodes: [...shifted.nodes, subA, subB],
       edges: [
-        ...graph.edges,
+        ...shifted.edges,
         { id: id('e'), source: agent.id, target: subA.id, label: 'parallel' },
         { id: id('e'), source: agent.id, target: subB.id, label: 'parallel' },
       ],
@@ -316,34 +359,33 @@ const addNoteCapturing = (userText: string): Mutation => (graph) => {
   // If the graph has an End node, splice the Note in between whoever was
   // feeding End and End itself. Otherwise hang it off the lead agent.
   if (end) {
-    const incomingToEnd = graph.edges.filter((e) => e.target === end.id);
-    // Position the Note just above End on the same column.
-    const pos = { x: end.position.x - 20, y: end.position.y - 140 };
+    // Push End down a row so the Note can wedge in just above it.
+    const ROW = 160;
+    const shifted = shiftNodes(graph, new Set([end.id]), ROW);
+
+    // Note takes End's *original* position.
     const noteNode: GraphNode = {
       id: noteId,
       type: 'note',
-      position: pos,
+      position: { x: end.position.x - 20, y: end.position.y },
       data: { kind: 'note', label: 'Copilot note', body: userText.slice(0, 240) },
     };
 
     // Reroute every incoming-to-End edge to land on the Note instead, then
     // add a single Note → End bridge.
+    const incomingToEnd = shifted.edges.filter((e) => e.target === end.id);
     const rerouted: GraphEdge[] = incomingToEnd.map((e) => ({
       ...e,
       target: noteId,
     }));
-    const others = graph.edges.filter(
+    const others = shifted.edges.filter(
       (e) => !incomingToEnd.find((i) => i.id === e.id)
     );
-    const bridge: GraphEdge = {
-      id: id('e'),
-      source: noteId,
-      target: end.id,
-    };
+    const bridge: GraphEdge = { id: id('e'), source: noteId, target: end.id };
 
     return {
       graph: {
-        nodes: [...graph.nodes, noteNode],
+        nodes: [...shifted.nodes, noteNode],
         edges: [...others, ...rerouted, bridge],
       },
       eventLabel: 'Added a Note before End',
@@ -389,23 +431,29 @@ const addNoteCapturing = (userText: string): Mutation => (graph) => {
 const addBranchAfterAgent = (userText: string): Mutation => (graph) => {
   const agent = graph.nodes.find((n) => n.type === 'agent');
   if (!agent) return null;
+
+  // Make room below the agent for the new If/else row.
+  const SHIFT = 200;
+  const shiftSet = descendantsInclusive(graph, agent.id);
+  shiftSet.delete(agent.id);
+  const shifted = shiftNodes(graph, shiftSet, SHIFT);
+
   const ifId = id('ifelse');
   const branchLabel =
     userText.split(/\s+/).slice(0, 3).join(' ').slice(0, 28) || 'new branch';
   const newIfElse: GraphNode = {
     id: ifId,
     type: 'ifelse',
-    position: { x: agent.position.x + 20, y: agent.position.y + 220 },
-    data: {
-      kind: 'ifelse',
-      label: 'New branch',
-      branches: [branchLabel, 'else'],
-    },
+    position: { x: agent.position.x + 20, y: agent.position.y + 180 },
+    data: { kind: 'ifelse', label: 'New branch', branches: [branchLabel, 'else'] },
   };
   return {
     graph: {
-      nodes: [...graph.nodes, newIfElse],
-      edges: [...graph.edges, { id: id('e'), source: agent.id, target: ifId }],
+      nodes: [...shifted.nodes, newIfElse],
+      edges: [
+        ...shifted.edges,
+        { id: id('e'), source: agent.id, target: ifId },
+      ],
     },
     eventLabel: `Added an If/else branch for "${branchLabel}"`,
   };
