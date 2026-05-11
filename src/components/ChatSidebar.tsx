@@ -1,15 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowUp, Sparkles, Wand2 } from 'lucide-react';
+import { ArrowUp, Sparkles, Wand2, FastForward } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { TEMPLATES } from '../data/templates';
 import { matchEntry, fallbackEntry, CHAT_ENTRIES } from '../data/chatScript';
+import {
+  EMAIL_DEMO_PROMPT,
+  EMAIL_DEMO_STEPS,
+  EMAIL_FINAL,
+  type DemoStep,
+} from '../data/emailDemo';
 import type { Graph } from '../types';
 import clsx from 'clsx';
 
 // Timing constants — the "AI working" feel comes from these spaced-out steps.
-const THINK_MS = 700;   // how long the thinking dots show before the reply appears
-const NODES_MS = 250;   // delay between reply text and new nodes spawning
-const EDGES_MS = 500;   // delay between nodes and the edges connecting them
+const THINK_MS = 700;
+const NODES_MS = 250;
+const EDGES_MS = 500;
+
+// Per-demo-step pacing.
+const STEP_GAP_MS = 600;        // pause between consecutive demo steps
+const STEP_THINK_MS = 650;      // thinking dots before reply text appears
 
 export function ChatSidebar() {
   const chat = useStore((s) => s.chat);
@@ -21,16 +31,46 @@ export function ChatSidebar() {
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Demo state.
+  // - demoPending: true when this Email session hasn't run the demo yet
+  //   AND the graph is still in its blank-shell state.
+  // - demoRunning: true while the staged build-up is playing.
+  // - timeouts: collected so Skip can cancel pending steps cleanly.
+  const [demoRunning, setDemoRunning] = useState(false);
+  const demoPendingRef = useRef(false);
+  const timeoutsRef = useRef<number[]>([]);
+
+  const isEmailFirstLoad =
+    currentTemplate === 'email' &&
+    chat.length === 0 &&
+    graph.nodes.length <= 2; // blank shell
+
   // Greet on template load if chat is empty.
   useEffect(() => {
     if (chat.length === 0 && currentTemplate) {
-      pushChat({
-        role: 'copilot',
-        text: greetingFor(currentTemplate),
-      });
+      if (currentTemplate === 'email') {
+        // Email lands in cold-start demo mode: pre-fill the prompt and
+        // arm `demoPending` so the next send runs the build-up.
+        demoPendingRef.current = true;
+        setInput(EMAIL_DEMO_PROMPT);
+        pushChat({
+          role: 'copilot',
+          text: "Watch me build an email assistant from scratch. I've pre-filled a prompt — hit send and I'll wire it up step by step. You can skip ahead at any point.",
+        });
+      } else {
+        pushChat({ role: 'copilot', text: greetingFor(currentTemplate) });
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTemplate]);
+
+  // Reset demo timeouts on unmount / template switch.
+  useEffect(() => {
+    return () => {
+      timeoutsRef.current.forEach((t) => clearTimeout(t));
+      timeoutsRef.current = [];
+    };
+  }, []);
 
   // Autoscroll to bottom on new message.
   useEffect(() => {
@@ -40,17 +80,93 @@ export function ChatSidebar() {
     });
   }, [chat]);
 
+  const schedule = (fn: () => void, ms: number) => {
+    const t = window.setTimeout(fn, ms);
+    timeoutsRef.current.push(t);
+  };
+
+  // Walk through the demo steps sequentially. Each step reuses the same
+  // thinking → reply → staged graph mutation pipeline as the normal chat.
+  const runDemo = (initialGraph: Graph) => {
+    setDemoRunning(true);
+    let acc = initialGraph;
+    let delay = 0;
+
+    EMAIL_DEMO_STEPS.forEach((step: DemoStep, idx) => {
+      const stepStart = delay;
+      const before = acc;
+      const after = step.mutation(acc);
+      acc = after;
+
+      // a) Push a thinking bubble.
+      schedule(() => {
+        const placeholderId = pushChat({
+          role: 'copilot',
+          text: '',
+          thinking: true,
+        });
+
+        // b) After STEP_THINK_MS, reveal the reply.
+        schedule(() => {
+          updateChat(placeholderId, { text: step.reply, thinking: false });
+
+          // c) Stage the mutation: nodes first, then edges.
+          const stages = stageMutation(before, after);
+          schedule(() => {
+            setGraph(stages.afterNodes);
+            schedule(() => {
+              setGraph(stages.afterEdges);
+            }, EDGES_MS);
+          }, NODES_MS);
+        }, STEP_THINK_MS);
+      }, stepStart);
+
+      // The total time this step consumes:
+      // thinking + reply + nodes + edges + a small gap before next.
+      const stepDuration =
+        STEP_THINK_MS + NODES_MS + EDGES_MS + STEP_GAP_MS + (step.dwellMs ?? 0);
+      delay += stepDuration;
+
+      // After the final step, drop demo flags.
+      if (idx === EMAIL_DEMO_STEPS.length - 1) {
+        schedule(() => {
+          setDemoRunning(false);
+          demoPendingRef.current = false;
+        }, stepStart + stepDuration);
+      }
+    });
+  };
+
+  const skipDemo = () => {
+    timeoutsRef.current.forEach((t) => clearTimeout(t));
+    timeoutsRef.current = [];
+    setGraph(EMAIL_FINAL);
+    setDemoRunning(false);
+    demoPendingRef.current = false;
+    pushChat({
+      role: 'copilot',
+      text: "Skipped — loaded the finished graph. Switch to **Test** to try it.",
+    });
+  };
+
   const submit = (raw?: string) => {
     const text = (raw ?? input).trim();
     if (!text) return;
     pushChat({ role: 'user', text });
     setInput('');
 
+    // First send on a cold-start Email session → play the build-up demo.
+    if (demoPendingRef.current && currentTemplate === 'email') {
+      demoPendingRef.current = false;
+      runDemo(graph);
+      return;
+    }
+
     // 1. Show a "thinking" bubble immediately.
     const placeholderId = pushChat({ role: 'copilot', text: '', thinking: true });
 
     // 2. After THINK_MS, resolve the entry and reveal the reply.
-    setTimeout(() => {
+    schedule(() => {
       const entry = matchEntry(text) ?? fallbackEntry(text);
       const result = entry.mutation(graph);
 
@@ -62,34 +178,43 @@ export function ChatSidebar() {
         return;
       }
 
-      // Reply text shows first.
       updateChat(placeholderId, { text: entry.reply, thinking: false });
 
-      // 3. Apply the mutation in stages so it feels like the AI is building
-      // the graph in real time: new nodes first, then edges that connect them.
       const stages = stageMutation(graph, result.graph);
 
-      setTimeout(() => {
+      schedule(() => {
         setGraph(stages.afterNodes);
-        setTimeout(() => {
+        schedule(() => {
           setGraph(stages.afterEdges);
-          // Event card shows after the edges land, summarising what changed.
           updateChat(placeholderId, { event: { label: result.eventLabel } });
         }, EDGES_MS);
       }, NODES_MS);
     }, THINK_MS);
   };
 
+  const showSkip = demoRunning || (demoPendingRef.current && currentTemplate === 'email');
+
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 py-3 border-b border-border flex items-center gap-2">
         <Sparkles className="w-4 h-4 text-coral" />
-        <div>
+        <div className="flex-1 min-w-0">
           <div className="font-medium text-ink leading-none">Copilot</div>
           <div className="text-[11px] text-muted mt-0.5">
-            Scripted demo — try a suggestion below
+            {demoRunning
+              ? 'Building your agent…'
+              : 'Scripted demo — try a suggestion below'}
           </div>
         </div>
+        {showSkip && (
+          <button
+            onClick={skipDemo}
+            className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-md bg-canvas border border-border text-muted hover:text-ink hover:border-ink/30"
+            title="Skip the build animation and load the finished graph"
+          >
+            <FastForward className="w-3 h-3" /> Skip
+          </button>
+        )}
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
@@ -102,7 +227,9 @@ export function ChatSidebar() {
             thinking={m.thinking}
           />
         ))}
-        {chat.length <= 1 && <SuggestionChips onPick={submit} />}
+        {!isEmailFirstLoad && chat.length <= 1 && (
+          <SuggestionChips onPick={submit} />
+        )}
       </div>
 
       <div className="p-3 border-t border-border">
@@ -117,12 +244,17 @@ export function ChatSidebar() {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask the copilot to edit the graph…"
-            className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted/70"
+            placeholder={
+              demoPendingRef.current
+                ? 'Press send to start the demo…'
+                : 'Ask the copilot to edit the graph…'
+            }
+            disabled={demoRunning}
+            className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted/70 disabled:opacity-50"
           />
           <button
             type="submit"
-            disabled={!input.trim()}
+            disabled={!input.trim() || demoRunning}
             className="w-7 h-7 rounded-full bg-coral/90 hover:bg-coral text-white flex items-center justify-center disabled:opacity-40"
             aria-label="Send"
           >
@@ -135,10 +267,8 @@ export function ChatSidebar() {
 }
 
 // Split a graph mutation into two snapshots:
-//   1. afterNodes: previous edges + everything else from the new graph (nodes appear, edges to new nodes still missing)
+//   1. afterNodes: previous edges + everything else from the new graph
 //   2. afterEdges: the final new graph
-//
-// If no new nodes were added, both snapshots are identical (just the final state).
 function stageMutation(oldGraph: Graph, newGraph: Graph): {
   afterNodes: Graph;
   afterEdges: Graph;
@@ -152,7 +282,6 @@ function stageMutation(oldGraph: Graph, newGraph: Graph): {
     return { afterNodes: newGraph, afterEdges: newGraph };
   }
 
-  // afterNodes: include the final nodes but exclude any new edges that touch a brand-new node.
   const newNodeSet = new Set(newNodeIds);
   const afterNodes: Graph = {
     nodes: newGraph.nodes,
@@ -160,7 +289,6 @@ function stageMutation(oldGraph: Graph, newGraph: Graph): {
       (e) => !newNodeSet.has(e.source) && !newNodeSet.has(e.target)
     ),
   };
-
   return { afterNodes, afterEdges: newGraph };
 }
 
@@ -169,8 +297,6 @@ function greetingFor(t: string) {
     return "I built a travel agent with three specialist subagents running in parallel — flight, hotel, itinerary. The lead coordinator fans out and merges results. Want to tweak it?";
   if (t === 'support')
     return "Classify-then-route support agent. The refund branch reads from a Memory store of past tickets; the technical branch searches your docs. Want to add a tone-matching guardrail?";
-  if (t === 'email')
-    return "Triage-first inbox: each email is classified as request / info-sharing / meeting / spam, then routed. Drafts and meetings go through human approval before sending; spam is deleted; info-sharing gets summarized. Want to add a tone-matching guardrail or a custom Skill?";
   if (t === 'blank')
     return "Blank graph loaded. Try \"add a memory store\" or \"parallelize this\" to bootstrap something interesting.";
   return TEMPLATES.blank.description;
@@ -192,13 +318,13 @@ function Message({
     <div className={clsx('flex', isUser ? 'justify-end' : 'justify-start')}>
       <div
         className={clsx(
-          'max-w-[85%] text-sm leading-snug rounded-2xl px-3 py-2 transition-[background] animate-fade-in',
+          'max-w-[88%] text-sm leading-snug rounded-2xl px-3 py-2 transition-[background] animate-fade-in',
           isUser
             ? 'bg-coral/10 text-ink rounded-br-sm'
             : 'bg-white border border-border text-ink rounded-bl-sm'
         )}
       >
-        {thinking ? <ThinkingDots /> : <div>{text}</div>}
+        {thinking ? <ThinkingDots /> : <div className="whitespace-pre-wrap">{text}</div>}
         {eventLabel && !thinking && (
           <div className="mt-1.5 text-[11px] inline-flex items-center gap-1 px-2 py-0.5 bg-canvas border border-border rounded-full text-muted">
             ✨ {eventLabel}

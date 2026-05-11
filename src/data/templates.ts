@@ -144,47 +144,29 @@ const SUPPORT: Graph = {
   ],
 };
 
+// EMAIL starts as a blank shell so the cold-start copilot demo (see
+// emailDemo.ts) can build it up step-by-step. The completed graph from the
+// demo matches what used to be hardcoded here.
 const EMAIL: Graph = {
-  // Linear triage pipeline. Start → Triage classifier → branches by email type.
-  // - request    → draft_reply  → User approval → End
-  // - meeting    → schedule_mtg → User approval → End
-  // - info       → summarize_thread             → End
-  // - spam       → End (deleted)
   nodes: [
-    { id: 'start', type: 'start', position: { x: 360, y: 20 }, data: { kind: 'start', label: 'Start' } },
-    {
-      id: 'triage',
-      type: 'classify',
-      position: { x: 300, y: 140 },
-      data: {
-        kind: 'classify',
-        label: 'Triage email',
-        intents: ['request', 'info-sharing', 'meeting', 'spam'],
-      },
-    },
-    // Three Skills fan out as the second row (spam routes directly to End).
-    {
-      id: 'skill-draft', type: 'skill',
-      position: { x: 60, y: 340 },
-      data: { kind: 'skill', label: 'draft_reply', description: 'Compose a reply matching tone and prior thread context.' },
-    },
-    {
-      id: 'skill-summary', type: 'skill',
-      position: { x: 320, y: 340 },
-      data: { kind: 'skill', label: 'summarize_thread', description: 'Summarize a long thread into action items.' },
-    },
-    {
-      id: 'skill-schedule', type: 'skill',
-      position: { x: 580, y: 340 },
-      data: { kind: 'skill', label: 'schedule_meeting', description: 'Propose times via the calendar tool.' },
-    },
-    // Approval is downstream of draft + schedule; summary bypasses it.
-    {
-      id: 'approval', type: 'approval',
-      position: { x: 220, y: 500 },
-      data: { kind: 'approval', label: 'User approval' },
-    },
-    { id: 'end', type: 'end', position: { x: 380, y: 660 }, data: { kind: 'end', label: 'End' } },
+    { id: 'start', type: 'start', position: { x: 380, y: 60 },  data: { kind: 'start', label: 'Start' } },
+    { id: 'end',   type: 'end',   position: { x: 400, y: 660 }, data: { kind: 'end', label: 'End' } },
+  ],
+  edges: [
+    { id: 'e-start-end', source: 'start', target: 'end' },
+  ],
+};
+
+// The fully-built form (Test mode references this when picking responses).
+export const EMAIL_FINAL: Graph = {
+  nodes: [
+    { id: 'start',          type: 'start',    position: { x: 380, y: 60 },  data: { kind: 'start', label: 'Start' } },
+    { id: 'triage',         type: 'classify', position: { x: 300, y: 180 }, data: { kind: 'classify', label: 'Triage email', intents: ['request', 'info-sharing', 'meeting', 'spam'] } },
+    { id: 'skill-draft',    type: 'skill',    position: { x: 60, y: 360 },  data: { kind: 'skill', label: 'draft_reply', description: 'Compose a reply matching tone and prior thread context.' } },
+    { id: 'skill-summary',  type: 'skill',    position: { x: 320, y: 360 }, data: { kind: 'skill', label: 'summarize_thread', description: 'Summarize a long thread into action items.' } },
+    { id: 'skill-schedule', type: 'skill',    position: { x: 580, y: 360 }, data: { kind: 'skill', label: 'schedule_meeting', description: 'Propose times via the calendar tool.' } },
+    { id: 'approval',       type: 'approval', position: { x: 220, y: 520 }, data: { kind: 'approval', label: 'User approval' } },
+    { id: 'end',            type: 'end',      position: { x: 400, y: 680 }, data: { kind: 'end', label: 'End' } },
   ],
   edges: [
     { id: 'e-start',    source: 'start',          target: 'triage' },

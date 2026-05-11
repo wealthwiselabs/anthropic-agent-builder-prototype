@@ -10,6 +10,7 @@ import {
   MoreHorizontal,
 } from 'lucide-react';
 import { TEMPLATES } from '../data/templates';
+import { EMAIL_FINAL } from '../data/emailDemo';
 import type { TemplateId } from '../types';
 import { useStore } from '../store/useStore';
 import { Canvas } from '../components/canvas/Canvas';
@@ -50,6 +51,16 @@ export function Builder() {
     if (next === 'deploy') {
       setDeployOpen(true);
       return;
+    }
+    // If the reviewer jumps to Test while the Email graph is still in its
+    // blank demo-shell state, fast-forward to the finished graph so Test
+    // responses have real nodes to reference and highlight.
+    if (
+      next === 'test' &&
+      templateId === 'email' &&
+      useStore.getState().graph.nodes.length <= 2
+    ) {
+      setGraph(EMAIL_FINAL);
     }
     setMode(next);
   };
