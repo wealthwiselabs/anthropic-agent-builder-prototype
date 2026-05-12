@@ -204,6 +204,46 @@ const addWebSearch: Mutation = (graph) => {
   };
 };
 
+// Insert a Classify node BEFORE the lead agent / subagent fan-out so the
+// lead can ask the user for missing details before specialists run. Used
+// by the B1 eval "clarification" suggestion.
+const insertClassifyBeforeLead: Mutation = (graph) => {
+  const agent = graph.nodes.find((n) => n.type === 'agent');
+  if (!agent) return null;
+  if (graph.nodes.find((n) => n.type === 'classify')) {
+    return { graph, eventLabel: 'Classify node already present — no change' };
+  }
+
+  const ROW = 160;
+  const shiftSet = descendantsInclusive(graph, agent.id);
+  const shifted = shiftNodes(graph, shiftSet, ROW);
+
+  const clsId = id('classify');
+  const newNode: GraphNode = {
+    id: clsId,
+    type: 'classify',
+    position: { x: agent.position.x + 20, y: agent.position.y },
+    data: {
+      kind: 'classify',
+      label: 'Clarify missing details',
+      intents: ['has details', 'needs clarification'],
+    },
+  };
+  // Reroute everything that fed the agent to feed the Classify first,
+  // then bridge Classify → agent.
+  const incoming = shifted.edges.filter((e) => e.target === agent.id);
+  const rerouted: GraphEdge[] = incoming.map((e) => ({ ...e, target: clsId }));
+  const bridge: GraphEdge = { id: id('e'), source: clsId, target: agent.id };
+  const others = shifted.edges.filter((e) => !incoming.find((i) => i.id === e.id));
+  return {
+    graph: {
+      nodes: [...shifted.nodes, newNode],
+      edges: [...others, ...rerouted, bridge],
+    },
+    eventLabel: `Added Classify node before ${agent.data.label}`,
+  };
+};
+
 const parallelize: Mutation = (graph) => {
   if (graph.nodes.filter((n) => n.type === 'subagent').length > 0) {
     return { graph, eventLabel: 'Multi-agent setup already in place' };
@@ -258,6 +298,14 @@ export type ChatEntry = {
 };
 
 export const CHAT_ENTRIES: ChatEntry[] = [
+  {
+    // Classify entry comes first so "classify" beats "clarify"-adjacent
+    // matches in other entries; B1's "clarification" prefill routes here.
+    keywords: ['classify', 'clarify', 'clarifying', 'clarification', 'classify node', 'missing details'],
+    reply:
+      "Added a Classify node to ask the user for missing details before the subagents fan out.",
+    mutation: insertClassifyBeforeLead,
+  },
   {
     keywords: ['guardrail', 'guard', 'safety', 'filter', 'safe'],
     reply:

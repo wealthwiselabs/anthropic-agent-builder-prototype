@@ -42,6 +42,9 @@ export function Builder() {
   const fromEval = params.get('from') === 'eval';
   const suggestionKey = params.get('suggestion');
   const project = params.get('project');
+  // Prefill text for the chat input — set when B1 deep-links a suggestion
+  // CTA so the user just reviews + hits Send (no auto-submit).
+  const prefill = params.get('prefill') ?? '';
   const evalSuggestion =
     fromEval && suggestionKey ? evalSuggestions[suggestionKey] : undefined;
   const evalBackUrl = evalSuggestion
@@ -132,6 +135,7 @@ export function Builder() {
           setView={setView}
           onCloseCode={() => setView('graph')}
           onAdvance={() => onWizardChange('test')}
+          prefill={prefill}
         />
       )}
       {mode === 'test' && (
@@ -156,11 +160,13 @@ function BuildBody({
   onCloseCode,
   onAdvance,
   setView,
+  prefill,
 }: {
   view: 'graph' | 'code';
   onCloseCode: () => void;
   onAdvance: () => void;
   setView: (v: 'graph' | 'code') => void;
+  prefill: string;
 }) {
   const graph = useStore((s) => s.graph);
   const chat = useStore((s) => s.chat);
@@ -175,7 +181,7 @@ function BuildBody({
   return (
     <div className="flex-1 flex min-h-0">
       <aside className="w-[320px] shrink-0 border-r border-border bg-chrome">
-        <ChatSidebar />
+        <ChatSidebar initialDraft={prefill} />
       </aside>
       <div className="flex-1 min-w-0 relative bg-canvas">
         {view === 'graph' ? <Canvas /> : <CodeView onClose={onCloseCode} />}

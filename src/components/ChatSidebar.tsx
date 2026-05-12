@@ -52,7 +52,7 @@ const STEP_THINK_MS = 650;      // thinking dots before reply text appears
 // fires twice and wipes/repopulates the chat.
 let autoplayedFor: string | null = null;
 
-export function ChatSidebar() {
+export function ChatSidebar({ initialDraft = '' }: { initialDraft?: string } = {}) {
   const chat = useStore((s) => s.chat);
   const pushChat = useStore((s) => s.pushChat);
   const updateChat = useStore((s) => s.updateChat);
@@ -62,8 +62,12 @@ export function ChatSidebar() {
   const demoRunning = useStore((s) => s.demoRunning);
   const setDemoRunning = useStore((s) => s.setDemoRunning);
   const [params] = useSearchParams();
-  const [input, setInput] = useState('');
+  // Seed the chat draft from `initialDraft` (B1 eval prefill) so the user
+  // just reviews + hits Send. Only the first-mount value matters; once the
+  // user edits, the prop is ignored.
+  const [input, setInput] = useState(initialDraft);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Demo state.
   // - demoRunning (in store): true while the staged build-up is playing.
@@ -120,6 +124,22 @@ export function ChatSidebar() {
       timeoutsRef.current.forEach((t) => clearTimeout(t));
       timeoutsRef.current = [];
     };
+  }, []);
+
+  // When B1 prefilled a draft, focus the chat input on mount so the user
+  // can review + hit Enter (or click Send) immediately. We only auto-focus
+  // when there's actually prefilled text — otherwise we'd steal focus on
+  // every Builder load.
+  useEffect(() => {
+    if (initialDraft) {
+      inputRef.current?.focus();
+      // Put the caret at the end so editing feels natural.
+      const el = inputRef.current;
+      if (el) el.setSelectionRange(el.value.length, el.value.length);
+    }
+    // Intentionally mount-only — re-running on prop change would fight the
+    // user's own typing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Autoscroll to bottom on new message.
@@ -299,6 +319,7 @@ export function ChatSidebar() {
         >
           <Wand2 className="w-3.5 h-3.5 text-muted shrink-0" />
           <input
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={
