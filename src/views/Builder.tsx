@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { TEMPLATES } from '../data/templates';
 import { EMAIL_FINAL } from '../data/emailDemo';
+import { evalSuggestions } from '../data/evalSuggestions';
 import type { TemplateId } from '../types';
 import { useStore } from '../store/useStore';
 import { Canvas } from '../components/canvas/Canvas';
@@ -17,6 +18,7 @@ import { ChatSidebar } from '../components/ChatSidebar';
 import { TestPanel } from '../components/TestPanel';
 import { ContextPanel } from '../components/ContextPanel';
 import { CodeView } from '../components/CodeView';
+import { EvalCalloutBanner } from '../components/EvalCalloutBanner';
 import { WizardSteps, type WizardMode } from '../components/WizardSteps';
 
 export function Builder() {
@@ -34,6 +36,18 @@ export function Builder() {
 
   const setHasTested = useStore((s) => s.setHasTested);
   const clearChat = useStore((s) => s.clearChat);
+
+  // Eval (B1) deep-link context. Presence of `from=eval` activates the
+  // callout banner; the suggestion key picks the copy from evalSuggestions.
+  const fromEval = params.get('from') === 'eval';
+  const suggestionKey = params.get('suggestion');
+  const project = params.get('project');
+  const evalSuggestion =
+    fromEval && suggestionKey ? evalSuggestions[suggestionKey] : undefined;
+  const evalBackUrl = evalSuggestion
+    ? `https://wealthwiselabs.github.io/anthropic-eval-prototype/eval/travel-agent/clusters/${evalSuggestion.clusterId}`
+    : undefined;
+
   useEffect(() => {
     const tpl = TEMPLATES[templateId] ?? TEMPLATES.blank;
     setGraph(tpl.graph);
@@ -69,6 +83,14 @@ export function Builder() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
+      {/* Eval-handoff callout — only when the user lands via a B1 suggestion CTA. */}
+      {evalSuggestion && (
+        <EvalCalloutBanner
+          suggestion={evalSuggestion}
+          project={project}
+          evalBackUrl={evalBackUrl}
+        />
+      )}
       {/* Header */}
       <header className="h-14 flex items-center px-4 border-b border-border bg-chrome shrink-0">
         <Link
