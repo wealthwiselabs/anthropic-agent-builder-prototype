@@ -122,8 +122,15 @@
 }
 /* Handles are the dots on a node's top/bottom edges where users drag to
    create connections. Sized for comfortable grabbing — 18px visible plus
-   a generous hover ring. */
-.react-flow__handle {
+   a generous hover ring.
+
+   The doubled `.react-flow__handle.react-flow__handle` selector is
+   deliberate: it raises specificity above @xyflow's own single-class
+   `.react-flow__handle { width: 6px }` default. Vite injects the
+   library's stylesheet (imported in Canvas.tsx) AFTER this file, so at
+   equal specificity the 6px default would win — leaving handles a near
+   un-grabbable 6px and making connections feel broken. */
+.react-flow__handle.react-flow__handle {
   background: #B8B3A8;
   border: 2px solid #FAFAF7;
   width: 18px;
