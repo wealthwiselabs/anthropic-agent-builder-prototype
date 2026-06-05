@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ReactFlow,
   Background,
@@ -41,7 +41,33 @@ function CanvasInner() {
   const addEdge = useStore((s) => s.addEdge);
   const addNode = useStore((s) => s.addNode);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, fitView } = useReactFlow();
+
+  // Keep the whole graph framed when the canvas container changes size —
+  // window resizes while presenting, or a side panel (left nav, inspector)
+  // toggling. React Flow's `fitView` prop only fires on mount, so without
+  // this the viewport would stay put and nodes could drift off-screen.
+  //
+  // We observe the wrapper rather than the window so panel toggles count
+  // too. `fitView` only moves the viewport transform (not node dimensions),
+  // so it can't grow the wrapper and re-trigger the observer — no loop.
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    let raf = 0;
+    let primed = false; // skip the observer's initial synchronous fire
+    const refit = () => fitView({ padding: 0.08, maxZoom: 1.2, duration: 150 });
+    const ro = new ResizeObserver(() => {
+      if (!primed) { primed = true; return; }
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(refit);
+    });
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      cancelAnimationFrame(raf);
+    };
+  }, [fitView]);
   // Local edge selection — we don't persist this to the graph itself, but
   // React Flow needs to know which edge is "selected" so Backspace/Delete
   // can dispatch a remove change against it.

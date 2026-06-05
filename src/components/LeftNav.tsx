@@ -9,17 +9,28 @@ import {
   ChevronRight,
   BookOpen,
   Box,
+  PanelLeftClose,
 } from 'lucide-react';
+import { useStore } from '../store/useStore';
 
 // Visual-only Console nav. Only "Agent Builder" links to a real route.
 // Everything else is rendered for fidelity — cursor: default, no behavior.
 export function LeftNav() {
+  const toggleNav = useStore((s) => s.toggleNav);
   return (
     <aside className="w-60 shrink-0 border-r border-border bg-chrome flex flex-col h-screen sticky top-0">
-      <div className="px-5 pt-5 pb-3">
+      <div className="px-5 pt-5 pb-3 flex items-center justify-between gap-2">
         <div className="font-serif text-[19px] tracking-tight text-ink">
           Claude Console
         </div>
+        <button
+          onClick={toggleNav}
+          title="Hide sidebar (⌘B)"
+          aria-label="Hide sidebar"
+          className="w-7 h-7 -mr-1 flex items-center justify-center rounded-md text-muted hover:text-ink hover:bg-canvas shrink-0"
+        >
+          <PanelLeftClose className="w-4 h-4" />
+        </button>
       </div>
 
       <div className="px-3 pb-4">

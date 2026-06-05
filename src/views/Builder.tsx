@@ -12,6 +12,7 @@ import { evalSuggestions } from '../data/evalSuggestions';
 import type { TemplateId } from '../types';
 import { useStore } from '../store/useStore';
 import { Canvas } from '../components/canvas/Canvas';
+import { NavRevealButton } from '../components/NavToggle';
 import { NodePalette } from '../components/NodePalette';
 import { NodeInspector } from '../components/NodeInspector';
 import { ChatSidebar } from '../components/ChatSidebar';
@@ -96,6 +97,7 @@ export function Builder() {
       )}
       {/* Header */}
       <header className="h-14 flex items-center px-4 border-b border-border bg-chrome shrink-0">
+        <NavRevealButton />
         <Link
           to="/"
           className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-canvas text-muted hover:text-ink"

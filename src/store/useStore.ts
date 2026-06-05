@@ -36,6 +36,13 @@ type StoreState = {
   view: 'graph' | 'code';
   setView: (v: 'graph' | 'code') => void;
 
+  // Left Console nav visibility. Collapsible so the canvas can take the
+  // full width when presenting / on a narrow window. Toggled by a button
+  // in the chrome or Cmd/Ctrl+B.
+  navHidden: boolean;
+  toggleNav: () => void;
+  setNavHidden: (b: boolean) => void;
+
   // Wizard mode: Build → Test → Deploy
   mode: 'build' | 'test' | 'deploy';
   setMode: (m: 'build' | 'test' | 'deploy') => void;
@@ -108,6 +115,10 @@ export const useStore = create<StoreState>((set) => ({
 
   view: 'graph',
   setView: (v) => set({ view: v }),
+
+  navHidden: false,
+  toggleNav: () => set((s) => ({ navHidden: !s.navHidden })),
+  setNavHidden: (b) => set({ navHidden: b }),
 
   mode: 'build',
   setMode: (m) => set({ mode: m }),
