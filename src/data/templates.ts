@@ -153,7 +153,7 @@ const SUPPORT: Graph = {
 const EMAIL: Graph = {
   nodes: [
     { id: 'start', type: 'start', position: { x: 380, y: 60 },  data: { kind: 'start', label: 'Start' } },
-    { id: 'end',   type: 'end',   position: { x: 400, y: 660 }, data: { kind: 'end', label: 'End' } },
+    { id: 'end',   type: 'end',   position: { x: 400, y: 740 }, data: { kind: 'end', label: 'End' } },
   ],
   edges: [
     { id: 'e-start-end', source: 'start', target: 'end' },
@@ -165,11 +165,11 @@ export const EMAIL_FINAL: Graph = {
   nodes: [
     { id: 'start',          type: 'start',    position: { x: 380, y: 60 },  data: { kind: 'start', label: 'Start' } },
     { id: 'triage',         type: 'classify', position: { x: 300, y: 180 }, data: { kind: 'classify', label: 'Triage email', intents: ['request', 'info-sharing', 'meeting', 'spam'] } },
-    { id: 'skill-draft',    type: 'skill',    position: { x: 60, y: 360 },  data: { kind: 'skill', label: 'draft_reply', description: 'Compose a reply matching tone and prior thread context.' } },
-    { id: 'skill-summary',  type: 'skill',    position: { x: 320, y: 360 }, data: { kind: 'skill', label: 'summarize_thread', description: 'Summarize a long thread into action items.' } },
-    { id: 'skill-schedule', type: 'skill',    position: { x: 580, y: 360 }, data: { kind: 'skill', label: 'schedule_meeting', description: 'Propose times via the calendar tool.' } },
-    { id: 'approval',       type: 'approval', position: { x: 220, y: 520 }, data: { kind: 'approval', label: 'User approval' } },
-    { id: 'end',            type: 'end',      position: { x: 400, y: 680 }, data: { kind: 'end', label: 'End' } },
+    { id: 'skill-draft',    type: 'skill',    position: { x: 60, y: 430 },  data: { kind: 'skill', label: 'draft_reply', description: 'Compose a reply matching tone and prior thread context.' } },
+    { id: 'skill-summary',  type: 'skill',    position: { x: 320, y: 430 }, data: { kind: 'skill', label: 'summarize_thread', description: 'Summarize a long thread into action items.' } },
+    { id: 'skill-schedule', type: 'skill',    position: { x: 580, y: 430 }, data: { kind: 'skill', label: 'schedule_meeting', description: 'Propose times via the calendar tool.' } },
+    { id: 'approval',       type: 'approval', position: { x: 220, y: 600 }, data: { kind: 'approval', label: 'User approval' } },
+    { id: 'end',            type: 'end',      position: { x: 400, y: 740 }, data: { kind: 'end', label: 'End' } },
   ],
   edges: [
     { id: 'e-start',    source: 'start',          target: 'triage' },

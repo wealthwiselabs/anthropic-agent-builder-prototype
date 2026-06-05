@@ -59,21 +59,21 @@ function NodeShell({ nodeId, icon, iconBg, title, subtitle, badge, selected, chi
   return (
     <div
       className={clsx(
-        'relative bg-white rounded-2xl px-3 py-2.5 transition-shadow flex items-center gap-2.5 select-none animate-node-spawn',
+        'relative bg-white rounded-xl px-2.5 py-2 transition-shadow flex items-center gap-2 select-none animate-node-spawn',
         isActive
           ? 'node-active shadow-node'
           : selected ? 'shadow-node-selected' : 'shadow-node'
       )}
-      style={{ width: width ?? 200 }}
+      style={{ width: width ?? 172 }}
     >
       <div
-        className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
+        className="w-6 h-6 rounded-md flex items-center justify-center shrink-0"
         style={{ background: iconBg }}
       >
         {icon}
       </div>
       <div className="min-w-0 leading-tight">
-        <div className="text-[13px] text-ink truncate">{title}</div>
+        <div className="text-[12px] text-ink truncate">{title}</div>
         {subtitle && <div className="text-[11px] text-muted truncate">{subtitle}</div>}
         {children}
       </div>
@@ -96,7 +96,7 @@ export function StartNode({ id, data, selected }: NodeProps) {
         iconBg="#E8F3EB"
         title={d.label || 'Start'}
         selected={selected}
-        width={140}
+        width={120}
       />
       <Handle type="source" position={Position.Bottom} />
     </>
@@ -114,7 +114,7 @@ export function EndNode({ id, data, selected }: NodeProps) {
         iconBg="#E8F3EB"
         title={d.label || 'End'}
         selected={selected}
-        width={120}
+        width={108}
       />
     </>
   );
@@ -132,7 +132,7 @@ export function AgentNode({ id, data, selected }: NodeProps) {
         title={d.label}
         subtitle={d.kind === 'agent' ? 'Agent' : 'Subagent'}
         selected={selected}
-        width={220}
+        width={188}
       >
         <div className="flex items-center gap-1 mt-1 flex-wrap">
           <Pill>{d.model.replace('claude-', '')}</Pill>
@@ -161,7 +161,7 @@ export function SubagentNode({ id, data, selected }: NodeProps) {
         title={d.label}
         subtitle="Subagent"
         selected={selected}
-        width={200}
+        width={172}
       >
         <div className="flex items-center gap-1 mt-1 flex-wrap">
           <Pill>{d.model.replace('claude-', '')}</Pill>
@@ -184,7 +184,7 @@ export function ClassifyNode({ data, selected, id }: NodeProps) {
         title={d.label}
         subtitle="Classify"
         selected={selected}
-        width={220}
+        width={190}
       >
         <div className="mt-1 space-y-0.5">
           {d.intents.map((label) => (
@@ -219,7 +219,7 @@ export function IfElseNode({ data, selected, id }: NodeProps) {
         title={d.label}
         subtitle="If / else"
         selected={selected}
-        width={200}
+        width={172}
       >
         <div className="mt-1 space-y-0.5">
           {d.branches.map((label) => (
@@ -296,7 +296,7 @@ export function MemoryNode({ id, data, selected }: NodeProps) {
         title={d.label}
         subtitle={`store: ${d.storeName}`}
         selected={selected}
-        width={200}
+        width={172}
       />
       <Handle type="source" position={Position.Bottom} />
     </>
@@ -369,7 +369,7 @@ export function SkillNode({ id, data, selected }: NodeProps) {
         title={d.label}
         subtitle="Skill"
         selected={selected}
-        width={200}
+        width={172}
       />
       <Handle type="source" position={Position.Bottom} />
     </>

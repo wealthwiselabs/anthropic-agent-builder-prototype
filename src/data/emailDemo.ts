@@ -55,7 +55,7 @@ const addRequestBranch = (g: Graph): Graph => {
   const draft: GraphNode = {
     id: 'skill-draft',
     type: 'skill',
-    position: { x: 60, y: 360 },
+    position: { x: 60, y: 430 },
     data: {
       kind: 'skill',
       label: 'draft_reply',
@@ -65,7 +65,7 @@ const addRequestBranch = (g: Graph): Graph => {
   const approval: GraphNode = {
     id: 'approval',
     type: 'approval',
-    position: { x: 220, y: 520 },
+    position: { x: 220, y: 600 },
     data: { kind: 'approval', label: 'User approval' },
   };
 
@@ -91,7 +91,7 @@ const addMeetingBranch = (g: Graph): Graph => {
   const schedule: GraphNode = {
     id: 'skill-schedule',
     type: 'skill',
-    position: { x: 580, y: 360 },
+    position: { x: 580, y: 430 },
     data: {
       kind: 'skill',
       label: 'schedule_meeting',
@@ -119,7 +119,7 @@ const addInfoBranch = (g: Graph): Graph => {
   const summary: GraphNode = {
     id: 'skill-summary',
     type: 'skill',
-    position: { x: 320, y: 360 },
+    position: { x: 320, y: 430 },
     data: {
       kind: 'skill',
       label: 'summarize_thread',
